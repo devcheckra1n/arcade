@@ -397,6 +397,7 @@ const SYSTEMS = {
   lynx:       { name: "Lynx",               colors: ["#ea580c", "#431407"] },
   jaguar:     { name: "Jaguar",             colors: ["#dc2626", "#450a0a"] },
   pce:        { name: "PC Engine",          colors: ["#f97316", "#1e3a8a"] },
+  pcecd:      { name: "PC Engine CD",       colors: ["#fb923c", "#172554"] },
   pcfx:       { name: "PC-FX",              colors: ["#fb923c", "#312e81"] },
   ngp:        { name: "Neo Geo Pocket",     colors: ["#0891b2", "#164e63"] },
   ws:         { name: "WonderSwan",         colors: ["#a855f7", "#1e1b4b"] },
@@ -883,6 +884,7 @@ $("lockBtn").onclick = () => {
 // ---- controls ----
 
 function schemeOf(core) {
+  if (core === "pcecd") return "pce";
   return core === "mame2003" ? "mame" : core;
 }
 
@@ -1034,7 +1036,7 @@ function gameSource(g) {
 
 function biosSource(g) {
   if (g.bios) return { kind: "url", url: g.bios, name: baseName(g.bios) };
-  const b = library.bios[g.core];
+  const b = library.bios[g.core] || (g.core === "pcecd" && library.bios.pce);
   return b && library.key ? encSource(b) : null;
 }
 
@@ -1372,7 +1374,8 @@ function fillSystems(sel) {
 fillSystems($("addCore"));
 fillSystems($("localCore"));
 for (const [k, v] of Object.entries(SYSTEMS)) {
-  if (k !== "dos") $("ctlScheme").append(el("option", { value: k, textContent: v.name }));
+  if (k === "dos" || k === "pcecd") continue;
+  $("ctlScheme").append(el("option", { value: k, textContent: k === "pce" ? "PC Engine / CD" : v.name }));
 }
 
 function guessCore(name) {

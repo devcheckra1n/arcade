@@ -23,7 +23,7 @@
 static const char *SYSTEMS[] = {
     "nes", "snes", "n64", "gb", "gba", "nds", "vb", "psx", "psp", "segaMD", "segaMS", "segaGG",
     "segaCD", "sega32x", "segaSaturn", "atari2600", "atari7800", "lynx", "jaguar", "pce", "pcfx",
-    "ngp", "ws", "coleco", "3do", "arcade", "neogeo", "mame", "dos", NULL,
+    "pcecd", "ngp", "ws", "coleco", "3do", "arcade", "neogeo", "mame", "dos", NULL,
 };
 
 static const char *COVERS[][2] = {
@@ -457,6 +457,12 @@ static int lone_zip(const char *dir, char *name) {
     return ok;
 }
 
+static int loadable(const char *sys, const char *name) {
+    if (strcmp(sys, "neogeo") && strcmp(sys, "arcade")) return 1;
+    const char *dot = strrchr(name, '.');
+    return dot && (!strcasecmp(dot, ".zip") || !strcasecmp(dot, ".7z"));
+}
+
 static int is_system(const char *s) {
     for (int i = 0; SYSTEMS[i]; i++)
         if (!strcmp(SYSTEMS[i], s)) return 1;
@@ -519,6 +525,10 @@ int main(int argc, char **argv) {
             char fp[PATHMAX * 2], rel[PATHMAX * 2], id[25];
             snprintf(fp, sizeof fp, "%s/%s", sd, fn);
             if (is_dir(fp) || cover_type(fn)) continue;
+            if (!loadable(sys[i]->d_name, fn)) {
+                printf("skipping %s/%s: fbneo only loads .zip or .7z romsets\n", sys[i]->d_name, fn);
+                continue;
+            }
             snprintf(rel, sizeof rel, "%s/%s", sys[i]->d_name, fn);
             printf("%s\n", rel);
             int parts = store_file(fp, rel, id);

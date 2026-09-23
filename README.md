@@ -12,9 +12,11 @@ roms/<system>/<Game Name>.png      optional cover, same name as the game
 roms/bios/<system>/<bios files>    e.g. roms/bios/psx/scph5501.bin
 ```
 
-system folder names: nes snes n64 gb gba nds vb psx psp segaMD segaMS segaGG segaCD sega32x segaSaturn atari2600 atari7800 lynx jaguar pce pcfx ngp ws coleco 3do arcade neogeo mame dos
+system folder names: nes snes n64 gb gba nds vb psx psp segaMD segaMS segaGG segaCD sega32x segaSaturn atari2600 atari7800 lynx jaguar pce pcecd pcfx ngp ws coleco 3do arcade neogeo mame dos
 
 multi-file discs (cue + several bins) should be one `.chd` or a `.zip`.
+
+pc engine cd games go in `roms/pcecd/` with the system card in `roms/bios/pcecd/syscard3.pce`.
 
 build the packer once, then run it:
 
@@ -29,7 +31,7 @@ the password can't be recovered. if it's lost, delete `lib/` and pack again with
 
 ## neo geo
 
-neo geo games run on fbneo in AES (home console) mode. games go in `roms/neogeo/` under their fbneo romset names (`mslug.zip`, not `Metal Slug.zip`), and the bios goes in `roms/bios/neogeo/neogeo.zip`, kept as a zip.
+neo geo games run on fbneo in AES (home console) mode. games go in `roms/neogeo/` under their fbneo romset names (`mslug.zip`, not `Metal Slug.zip`), and the bios goes in `roms/bios/neogeo/neogeo.zip`, kept as a zip. `.neo` files (the neosd format) don't load in fbneo, so the packer skips them.
 
 the bios mode is picked in controls with neo geo selected. AES Europe/Asia needs `neo-epo.bin` inside neogeo.zip and AES Japan needs `neo-po.bin`. if the one picked is missing, the game falls back to UniBIOS 4.0 (`uni-bios_4_0.rom`), which can be switched to AES mode from its own menu (hold A+B+C while it boots).
 
