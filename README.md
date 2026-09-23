@@ -35,6 +35,6 @@ the bios mode is picked in controls with neo geo selected. AES Europe/Asia needs
 
 ## how it's served
 
-- the page is deployed to github pages from `index.html` only
+- `index.html` is the whole launcher. open it from disk or paste it anywhere that runs html; nothing needs deploying
 - `lib/meta.json` and the manifest come from raw.githubusercontent.com
 - chunks come from jsdelivr, falling back to raw github for anything jsdelivr hasn't picked up yet
