@@ -14,7 +14,11 @@ roms/bios/<system>/<bios files>    e.g. roms/bios/psx/scph5501.bin
 
 system folder names: nes snes n64 gb gba nds vb psx psp segaMD segaMS segaGG segaCD sega32x segaSaturn atari2600 atari7800 lynx jaguar pce pcecd pcfx ngp ws coleco 3do arcade neogeo mame dos
 
-multi-file discs (cue + several bins) should be one `.chd` or a `.zip`.
+multi-file discs (cue + several bins) go in one `.zip`.
+
+for ps1, bin/cue is recommended. the default ps1 core can't read `.chd`, so chd games run on the heavier beetle psx core instead, which can stutter on slow machines. the launcher marks them as heavy.
+
+a `<Game>.name` file next to a rom sets the title shown in the launcher, for arcade romsets that have to keep names like `kof2002.zip`.
 
 pc engine cd games go in `roms/pcecd/` with the system card in `roms/bios/pcecd/syscard3.pce`.
 

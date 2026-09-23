@@ -524,17 +524,28 @@ int main(int argc, char **argv) {
             const char *fn = fl[j]->d_name;
             char fp[PATHMAX * 2], rel[PATHMAX * 2], id[25];
             snprintf(fp, sizeof fp, "%s/%s", sd, fn);
-            if (is_dir(fp) || cover_type(fn)) continue;
+            const char *fdot = strrchr(fn, '.');
+            if (is_dir(fp) || cover_type(fn) || (fdot && !strcmp(fdot, ".name"))) continue;
             if (!loadable(sys[i]->d_name, fn)) {
                 printf("skipping %s/%s: fbneo only loads .zip or .7z romsets\n", sys[i]->d_name, fn);
                 continue;
             }
             snprintf(rel, sizeof rel, "%s/%s", sys[i]->d_name, fn);
             printf("%s\n", rel);
+            if (!strcmp(sys[i]->d_name, "psx") && fdot && !strcasecmp(fdot, ".chd"))
+                printf("  warning: chd ps1 games need the heavier beetle psx core; bin/cue (zipped) is recommended\n");
             int parts = store_file(fp, rel, id);
             size_t sl = stem_len(fn);
-            char stem[PATHMAX];
+            char stem[PATHMAX], np[PATHMAX * 3];
             snprintf(stem, sizeof stem, "%.*s", (int)sl, fn);
+            // an optional <stem>.name holds the display title (arcade romsets keep their short names)
+            snprintf(np, sizeof np, "%s/%s.name", sd, stem);
+            char *title = slurp(np, NULL);
+            if (title) {
+                title[strcspn(title, "\r\n")] = 0;
+                if (title[0]) snprintf(stem, sizeof stem, "%s", title);
+                free(title);
+            }
 
             if (ngames++) b_str(&man, ",");
             b_str(&man, "{\"name\":");

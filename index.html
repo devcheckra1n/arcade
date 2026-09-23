@@ -130,6 +130,11 @@
   .meta { padding: 10px 12px 12px; }
   .meta .name { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .meta .sys { font: 11px var(--mono); color: var(--dim); text-transform: uppercase; letter-spacing: .06em; margin-top: 2px; }
+  .card .heavy {
+    position: absolute; top: 8px; right: 8px; padding: 3px 7px; border-radius: 6px;
+    background: rgba(250, 204, 21, .92); color: #1c1917; font: 700 10px var(--mono); letter-spacing: .06em; text-transform: uppercase;
+  }
+  .card:hover .heavy { opacity: 0; }
   .card .del {
     position: absolute; top: 8px; right: 8px; width: 26px; height: 26px; border-radius: 8px;
     border: 0; background: rgba(0,0,0,.55); color: #fff; opacity: 0; transition: opacity .15s;
@@ -565,6 +570,10 @@ function card(g) {
       el("div", { className: "name", textContent: g.name }),
       el("div", { className: "sys", textContent: sys.name })));
   c.onclick = () => launch(g);
+  if (heavyChd(g)) {
+    c.append(el("span", { className: "heavy", textContent: "heavy",
+      title: "chd ps1 games need the heavier beetle psx core. bin/cue runs on the lighter one and is recommended." }));
+  }
 
   const saves = el("span", { className: "saves", title: "save states",
     innerHTML: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 3h11l3 3v15H5z"/><path d="M8 3v5h7V3M8 21v-7h8v7"/></svg>states' });
@@ -1027,6 +1036,17 @@ function encSource(f) {
   return { kind: "enc", bases: LIBRARY.data, id: f.id, parts: f.parts, name: f.name, key: library.key };
 }
 
+function gameFileName(g) {
+  if (g.lib) return g.lib.file.name;
+  if (g.local) return g.fileName;
+  return g.url ? baseName(g.url) : "";
+}
+
+// pcsx_rearmed (the default ps1 core) can't read chd; beetle psx can but is much heavier
+function heavyChd(g) {
+  return schemeOf(g.core) === "psx" && /\.chd$/i.test(gameFileName(g));
+}
+
 function gameSource(g) {
   if (g.lib) return encSource(g.lib.file);
   if (g.local) return { kind: "url", url: g.local, name: g.fileName };
@@ -1040,12 +1060,92 @@ function biosSource(g) {
   return b && library.key ? encSource(b) : null;
 }
 
+const GAME_FACTS = [
+  ["pce", /rondo of blood/i, [
+    "Rondo of Blood came out in Japan in 1993 on the PC Engine Super CD-ROM² and stayed Japan-only until 2007, when it was included in The Dracula X Chronicles on PSP.",
+    "Rescue Maria Renard and she becomes playable, and plenty of players find her stronger than Richter.",
+    "Symphony of the Night picks up right after it and opens with Rondo's final fight against Dracula.",
+    "The SNES game Dracula X is a separate, cut-down take on the same story, not a port.",
+  ]],
+  ["psx", /symphony of the night/i, [
+    "Symphony of the Night came out in 1997 and stars Alucard, Dracula's son.",
+    "The Inverted Castle, an upside-down copy of the whole map, holds the second half of the game. It's easy to miss completely.",
+    "\"What is a man? A miserable little pile of secrets!\" comes from the prologue, Richter's fight with Dracula.",
+    "Its mix of Metroid-style exploration and RPG levelling is half of where the word Metroidvania comes from.",
+  ]],
+  ["psx", /jojo/i, [
+    "The PlayStation version ports Capcom's 1999 arcade fighter JoJo's Bizarre Adventure: Heritage for the Future.",
+    "It adds a Super Story Mode that retells Part 3, Stardust Crusaders.",
+    "Most fighters can summon and dismiss their Stand mid-match, which changes their whole moveset.",
+  ]],
+  ["nes", /legend of zelda/i, [
+    "The US cartridge was gold, and it was one of the first home console games with a battery save.",
+    "Beating the game unlocks the Second Quest, a harder remixed map. Naming your file ZELDA jumps straight to it.",
+  ]],
+  ["n64", /super mario 64/i, [
+    "Super Mario 64 launched with the Nintendo 64 in 1996.",
+    "You can grab and stretch Mario's face on the title screen.",
+    "The blurry \"L is real 2401\" plaque on the courtyard statue fed years of Luigi rumours.",
+    "There are 120 Power Stars in total.",
+  ]],
+  ["n64", /smash bros/i, [
+    "Super Smash Bros. came out in 1999 with 12 fighters, four of them unlockable.",
+    "Masahiro Sakurai built it at HAL Laboratory, starting from a prototype called Dragon King: The Fighting Game.",
+  ]],
+  ["gba", /super mario world|advance 2/i, [
+    "Super Mario Advance 2 adds Luigi as a proper character with his own higher, floatier jump.",
+    "The GBA screen is smaller than the SNES picture, so the view is slightly cropped.",
+  ]],
+  ["gba", /mario bros\. 3|advance 4/i, [
+    "Super Mario Advance 4 supported e-Reader cards that added new levels and power-ups; many were only released in Japan.",
+    "Super Mario Bros. 3 first came out on the Famicom in Japan in 1988.",
+  ]],
+  ["neogeo", /king of fighters 2002|kof2002/i, [
+    "KOF 2002 is a dream match with no story, bringing back teams from across the series.",
+    "It was published by Playmore, which took over SNK's games after the original company went bankrupt in 2001.",
+    "Its graphics roms are encrypted on the cartridge, so the emulator decrypts them at boot. That's the pause before it starts.",
+  ]],
+];
+
+const SYSTEM_FACTS = {
+  pce: [
+    "The PC Engine CD-ROM² (1988) was the first CD-ROM add-on for a home console.",
+    "In North America the PC Engine was sold as the TurboGrafx-16.",
+  ],
+  psx: [
+    "The PlayStation grew out of a cancelled CD add-on Sony was building with Nintendo for the Super Famicom.",
+    "The PlayStation was the first console to sell over 100 million units.",
+  ],
+  n64: [
+    "The N64 stuck with cartridges while rivals moved to CDs, so games load almost instantly.",
+    "The N64 controller was Nintendo's first with an analog stick.",
+  ],
+  gba: ["The original GBA screen has no light at all; the SP added a front light in 2003."],
+  snes: ["Mode 7 let the SNES rotate and scale a background layer, which is how F-Zero and Super Mario Kart draw their tracks."],
+  nes: [
+    "The NES is the Famicom redesigned for the US after the 1983 video game crash.",
+    "Its front-loading slot was meant to make it look like a VCR rather than a toy.",
+  ],
+  neogeo: [
+    "AES home cartridges ran on the same hardware as the arcade MVS boards, which is why they cost so much.",
+    "\"Max 330 Mega\" on old Neo Geo boot screens counts megabits, not megabytes.",
+  ],
+};
+
+function factsFor(g) {
+  const own = GAME_FACTS.filter(([core, re]) => (core === g.core || core === schemeOf(g.core)) && re.test(g.name)).flatMap((f) => f[2]);
+  const sys = SYSTEM_FACTS[g.core] || SYSTEM_FACTS[schemeOf(g.core)] || [];
+  const shuffle = (a) => a.map((v) => [Math.random(), v]).sort((x, y) => x[0] - y[0]).map((v) => v[1]);
+  return [...shuffle(own), ...shuffle(sys)];
+}
+
 // Runs inside the launched page so download progress shows there.
 function playerPage(game) {
   const scheme = schemeOf(game.core);
   const cfg = {
     name: game.name,
     core: ejsCore(game.core),
+    emuCore: heavyChd(game) ? "mednafen_psx_hw" : null,
     scheme,
     // fbneo wants neogeo.zip next to the game as a zip, not unpacked like a normal bios
     biosAsFile: game.core === "neogeo",
@@ -1057,18 +1157,32 @@ function playerPage(game) {
     mouse: mouseBinds(scheme),
     updated: controls.updated,
     stateKey: gameKey(game),
+    facts: factsFor(game),
+    system: (SYSTEMS[game.core] || { name: game.core }).name,
   };
   const json = JSON.stringify(cfg).replace(/</g, "\\u003c");
   const title = game.name.replace(/[<&]/g, (c) => (c === "<" ? "&lt;" : "&amp;"));
   return `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>${title}</title>
 <style>
-html,body{margin:0;width:100%;height:100%;background:#0b0c10;color:#8b92a6;font:15px system-ui,sans-serif;overflow:hidden}
+html,body{margin:0;width:100%;height:100%;background:#000;color:#c9c9c9;overflow:hidden}
 #game{width:100%;height:100%}
-#status{position:fixed;inset:0;display:flex;flex-direction:column;gap:14px;align-items:center;justify-content:center;pointer-events:none}
-#status b{color:#eceef4;font-size:20px}
-#bar{width:220px;height:4px;border-radius:4px;background:#262b38;overflow:hidden}
-#bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#7c5cff,#22d3ee);transition:width .2s}
+#boot{position:fixed;inset:0;z-index:9999;background:#000;display:flex;align-items:center;justify-content:center;padding:24px;box-sizing:border-box;
+  font:14px/1.7 ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;transition:opacity .5s}
+#boot.gone{opacity:0;pointer-events:none}
+#boot .tb{width:min(720px,100%)}
+#boot .ln{display:flex;gap:9px;white-space:pre-wrap;word-break:break-word}
+#boot .p{color:#ff2f2f;flex:none}
+#boot .b{color:#fff}
+#boot .d{color:#6b6b6b}
+#boot .st{flex:none;color:#6b6b6b}
+#boot .st.ok{color:#fff}
+#boot .st.err,#boot .err{color:#ff2f2f}
+#boot .fact{margin:18px 0;min-height:4.2em}
+#boot .caret{display:inline-block;width:.6ch;height:1.05em;background:#fff;vertical-align:text-bottom;animation:blink 1.05s step-end infinite}
+#boot.wait .caret{background:#ff2f2f}
+@keyframes blink{50%{opacity:0}}
+@media (prefers-reduced-motion:reduce){#boot .caret{animation:none}}
 #states{position:fixed;inset:0;z-index:99999;display:none;align-items:center;justify-content:center;background:rgba(5,6,9,.82);backdrop-filter:blur(6px);color:#eceef4;font:14px system-ui,sans-serif}
 #states.on{display:flex}
 #states .box{width:min(640px,92vw);max-height:82vh;display:flex;flex-direction:column;background:#111319;border:1px solid #262b38;border-radius:16px;overflow:hidden}
@@ -1086,7 +1200,12 @@ html,body{margin:0;width:100%;height:100%;background:#0b0c10;color:#8b92a6;font:
 #states .none{grid-column:1/-1;padding:28px;text-align:center;color:#8b92a6}
 </style></head>
 <body><div id="game"></div>
-<div id="status"><b>${title}</b><div id="bar"><i></i></div><span id="msg">loading</span></div>
+<div id="boot"><div class="tb">
+<div class="ln"><span class="p">%</span><span class="b" id="cmd"></span></div>
+<div id="log"></div>
+<div class="fact" id="factbox"><div class="d">// did you know</div><div id="fact"></div></div>
+<div class="ln"><span class="p">%</span><span><span id="live"></span><span class="caret"></span></span></div>
+</div></div>
 <div id="states"><div class="box"><div class="head"><b>load state</b><button id="stFile">from file</button><button id="stClose">close</button></div><div class="list" id="stList"></div></div></div>
 <script>
 ${STATES_SRC}
@@ -1094,13 +1213,60 @@ ${STATES_SRC}
 <script>
 (async () => {
   const cfg = ${json};
-  const msg = document.getElementById("msg");
-  const bar = document.querySelector("#bar i");
+  const $b = (id) => document.getElementById(id);
+  const boot = $b("boot"), logEl = $b("log"), live = $b("live");
+  $b("cmd").textContent = "boot " + JSON.stringify(cfg.name) + " --" + cfg.system.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+
+  function row(text) {
+    const ln = document.createElement("div");
+    ln.className = "ln";
+    const st = document.createElement("span");
+    st.className = "st";
+    st.textContent = "[ .. ]";
+    const tx = document.createElement("span");
+    tx.textContent = text;
+    ln.append(st, tx);
+    logEl.append(ln);
+    return {
+      text(t) { tx.textContent = t; },
+      ok(t) { st.textContent = "[ ok ]"; st.className = "st ok"; if (t) tx.textContent = t; },
+      fail(t) { st.textContent = "[fail]"; st.className = "st err"; tx.textContent = t; tx.className = "err"; },
+    };
+  }
+  const meter = (n, of) => {
+    const w = 20, f = of ? Math.round(n / of * w) : 0;
+    return "[" + "#".repeat(f) + ".".repeat(w - f) + "] " + String(of ? Math.round(n / of * 100) : 0).padStart(3) + "%";
+  };
+
+  // facts type themselves out and rotate while anything is still loading
+  let factTimer = null;
+  if (cfg.facts.length) {
+    let fi = 0, typing = null;
+    const show = () => {
+      const text = cfg.facts[fi++ % cfg.facts.length];
+      const el = $b("fact");
+      let i = 0;
+      clearInterval(typing);
+      el.textContent = "";
+      typing = setInterval(() => {
+        el.textContent = text.slice(0, ++i);
+        if (i >= text.length) clearInterval(typing);
+      }, 16);
+    };
+    show();
+    factTimer = setInterval(show, 8000);
+  } else {
+    $b("factbox").remove();
+  }
 
 
   const hex = (h) => new Uint8Array(h.match(/../g).map((b) => parseInt(b, 16)));
-  let done = 0, total = 0;
-  const tick = () => { bar.style.width = (total ? done / total * 100 : 0) + "%"; };
+  let done = 0, total = 0, current = null, label = "";
+  const tick = () => {
+    const m = meter(done, total);
+    if (current) current.text(label + "  " + m);
+    live.textContent = label + " " + m;
+  };
 
   async function get(urls) {
     let last;
@@ -1114,15 +1280,24 @@ ${STATES_SRC}
     throw last;
   }
 
-  async function load(src, label) {
+  async function load(src, what) {
+    label = what;
+    current = row(what);
+    tick();
+    const out = await fetchSrc(src);
+    current.ok(what + (src.kind === "enc" ? "  decrypted " + src.parts + " part" + (src.parts > 1 ? "s" : "") : ""));
+    current = null;
+    return out;
+  }
+
+  async function fetchSrc(src) {
     if (src.kind === "url") {
-      msg.textContent = label;
+      live.textContent = label;
       return [await get([src.url])];
     }
     if (src.kind === "parts") {
       const out = [];
       for (let i = 0; i < src.urls.length; i++) {
-        msg.textContent = label + " (" + (i + 1) + "/" + src.urls.length + ")";
         out.push(await get([src.urls[i]]));
         done++; tick();
       }
@@ -1131,7 +1306,6 @@ ${STATES_SRC}
     const key = await crypto.subtle.importKey("raw", hex(src.key), "AES-GCM", false, ["decrypt"]);
     const out = [];
     for (let i = 0; i < src.parts; i++) {
-      msg.textContent = label + (src.parts > 1 ? " (" + (i + 1) + "/" + src.parts + ")" : "");
       const blob = new Uint8Array(await get(src.bases.map((b) => b + "d/" + src.id + "/" + i)));
       out.push(await crypto.subtle.decrypt(
         { name: "AES-GCM", iv: blob.subarray(0, 12), additionalData: new TextEncoder().encode(src.id + "/" + i) },
@@ -1147,17 +1321,21 @@ ${STATES_SRC}
     tick();
     if (cfg.bios && cfg.biosAsFile) {
       // EmulatorJS writes a raw ArrayBuffer as an empty file, so hand it bytes
-      bios = new Uint8Array(await new Blob(await load(cfg.bios, "loading bios")).arrayBuffer());
+      bios = new Uint8Array(await new Blob(await load(cfg.bios, "fetch bios")).arrayBuffer());
+    } else if (cfg.bios && cfg.bios.kind === "url") {
+      bios = cfg.bios.url;
     } else if (cfg.bios) {
-      bios = cfg.bios.kind === "url" ? cfg.bios.url : URL.createObjectURL(new Blob(await load(cfg.bios, "loading bios")));
+      bios = URL.createObjectURL(new Blob(await load(cfg.bios, "fetch bios")));
     }
     // a named File lets EmulatorJS pick the loader from the extension
-    game = new File(await load(cfg.game, "loading game"), cfg.game.name);
+    game = new File(await load(cfg.game, "fetch game"), cfg.game.name);
   } catch (e) {
-    msg.textContent = "failed to load: " + (e && e.message || e);
+    if (current) current.fail("failed: " + (e && e.message || e));
+    else row("").fail("failed: " + (e && e.message || e));
+    live.textContent = "";
+    clearInterval(factTimer);
     return;
   }
-  document.getElementById("status").remove();
 
   // AES modes need their bios file inside neogeo.zip; fall back to UniBIOS when it's missing
   if (cfg.biosAsFile && bios && cfg.options) {
@@ -1190,7 +1368,7 @@ ${STATES_SRC}
   } catch (e) {}
 
   window.EJS_player = "#game";
-  window.EJS_core = cfg.core;
+  window.EJS_core = cfg.emuCore || cfg.core;
   window.EJS_gameName = cfg.name;
   window.EJS_gameUrl = game;
   window.EJS_pathtodata = cfg.data;
@@ -1208,11 +1386,19 @@ ${STATES_SRC}
 
   window.EJS_onSaveState = async (e) => {
     const emu = window.EJS_emulator;
+    // canvas capture works on every core; the core-level grab is black on some (pcsx_rearmed) and hangs on others
+    const within = (p) => Promise.race([p, new Promise((ok) => setTimeout(() => ok(null), 1500))]);
     let shot = null;
     try {
-      const png = await Promise.race([emu.gameManager.screenshot(), new Promise((ok) => setTimeout(() => ok(null), 1500))]);
-      if (png) shot = new Blob([png], { type: "image/png" });
+      const r = await within(emu.takeScreenshot("canvas", "png", 1));
+      if (r && r.blob && r.blob.size > 200) shot = r.blob;
     } catch (err) {}
+    if (!shot) {
+      try {
+        const png = await within(emu.gameManager.screenshot());
+        if (png) shot = new Blob([png], { type: "image/png" });
+      } catch (err) {}
+    }
     try {
       await putState({ game: cfg.stateKey, name: cfg.name, core: cfg.core, time: Date.now(), data: new Blob([e.state]), shot });
       emu.displayMessage("STATE SAVED");
@@ -1325,6 +1511,59 @@ ${STATES_SRC}
     }, { passive: false });
   }
 
+  // a fresh tab can't start audio before a key or click in it, and some cores
+  // (fbneo) stall waiting on audio, so ask for one first when it's blocked
+  const audioBlocked = () => {
+    try {
+      if (navigator.getAutoplayPolicy) return navigator.getAutoplayPolicy("audiocontext") !== "allowed";
+      const AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return false;
+      const ac = new AC();
+      const blocked = ac.state !== "running";
+      ac.close();
+      return blocked;
+    } catch (e) {
+      return false;
+    }
+  };
+  if (audioBlocked()) {
+    boot.classList.add("wait");
+    live.textContent = "press any key to start";
+    await new Promise((go) => {
+      const once = (e) => {
+        if (e.type === "keydown") e.preventDefault();
+        ["keydown", "pointerdown"].forEach((t) => document.removeEventListener(t, once, true));
+        go();
+      };
+      ["keydown", "pointerdown"].forEach((t) => document.addEventListener(t, once, true));
+    });
+    boot.classList.remove("wait");
+  }
+
+  const core = row("start " + (cfg.emuCore || cfg.core));
+  live.textContent = "starting";
+  const mirror = setInterval(() => {
+    const emu = window.EJS_emulator;
+    const t = emu && emu.textElem && emu.textElem.innerText;
+    if (t) live.textContent = t.toLowerCase();
+    if (emu && emu.failedToStart) {
+      clearInterval(mirror);
+      clearInterval(factTimer);
+      core.fail("the emulator couldn't start this game" + (t ? ": " + t.toLowerCase() : ""));
+      live.textContent = "";
+    }
+  }, 200);
+  window.EJS_onGameStart = () => {
+    clearInterval(mirror);
+    clearInterval(factTimer);
+    core.ok();
+    live.textContent = "running";
+    setTimeout(() => {
+      boot.classList.add("gone");
+      setTimeout(() => boot.remove(), 600);
+    }, 350);
+  };
+
   const s = document.createElement("script");
   s.src = cfg.data + "loader.js";
   document.body.appendChild(s);
@@ -1333,6 +1572,7 @@ ${STATES_SRC}
 }
 
 function launch(game) {
+  if (heavyChd(game)) toast("chd ps1 games run on a heavier core and may stutter; bin/cue is recommended");
   const html = playerPage(game);
   if ($("blank").checked) {
     const w = window.open("about:blank", "_blank");
