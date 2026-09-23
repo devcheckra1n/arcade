@@ -136,11 +136,6 @@
   .meta { padding: 10px 12px 12px; }
   .meta .name { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .meta .sys { font: 11px var(--mono); color: var(--dim); text-transform: uppercase; letter-spacing: .06em; margin-top: 2px; }
-  .card .heavy {
-    position: absolute; top: 8px; right: 8px; padding: 3px 7px; border-radius: 6px;
-    background: rgba(250, 204, 21, .92); color: #1c1917; font: 700 10px var(--mono); letter-spacing: .06em; text-transform: uppercase;
-  }
-  .card:hover .heavy { opacity: 0; }
   .card .del {
     position: absolute; top: 8px; right: 8px; width: 26px; height: 26px; border-radius: 8px;
     border: 0; background: rgba(0,0,0,.55); color: #fff; opacity: 0; transition: opacity .15s;
@@ -220,6 +215,9 @@
   }
   .unlock input[type=password]:focus { border-color: var(--accent); }
 
+  h4.sub { margin: 0 0 10px; font: 600 11px var(--mono); color: var(--faint); letter-spacing: .08em; text-transform: uppercase; }
+  .inject-state { font: 12px var(--mono); color: var(--dim); }
+  .inject-state.on { color: var(--accent2); }
   .states { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
   .state { background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
   .state .shot { aspect-ratio: 4 / 3; background: var(--bg) center / cover no-repeat; image-rendering: pixelated; }
@@ -273,6 +271,10 @@
     <button class="btn" id="openLocal">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20h16M12 4v12m0 0-4-4m4 4 4-4"/></svg>
       local file
+    </button>
+    <button class="btn" id="openSaveIO">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3h11l3 3v15H5z"/><path d="M8 3v5h7V3M8 21v-7h8v7"/></svg>
+      saves
     </button>
     <button class="btn" id="lockBtn" hidden title="forget the password on this device">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
@@ -367,6 +369,21 @@
   </div>
 </dialog>
 
+<dialog id="saveIO">
+  <div class="dhead"><h3>import / export save</h3><button class="x" id="saveIOClose">×</button></div>
+  <div class="dbody">
+    <div class="field"><label>game</label><select id="saveIOGame"></select></div>
+    <p class="hint" id="saveIOState" style="margin:0 0 16px"></p>
+    <div class="row">
+      <button class="btn primary" id="saveIOImport">import save file</button>
+      <button class="btn" id="saveIOExport">export save file</button>
+      <button class="btn ghost" id="saveIOCancel" hidden>cancel import</button>
+      <input type="file" id="saveIOFile" hidden>
+    </div>
+    <p class="hint" style="margin:16px 0 0">imports are written into the game the next time it boots, replacing its save. battery saves and memory cards from other emulators work (.srm, .sav, .mcr and the like). export grabs the save the game last wrote.</p>
+  </div>
+</dialog>
+
 <div id="overlay"><button class="btn" id="closeOverlay">close</button><iframe id="frame" allow="autoplay; fullscreen; gamepad"></iframe></div>
 <div id="toast"></div>
 
@@ -378,7 +395,28 @@ const GAMES = [
   // { name: "Big Disc", core: "psx", url: "https://cdn.jsdelivr.net/gh/you/roms@main/psx/big.iso", parts: [1, 4], bios: "https://..." },
 ];
 
-const EJS_DATA = "https://cdn.emulatorjs.org/stable/data/";
+// EmulatorJS and every core come from npm through jsdelivr, so nothing needs
+// cdn.emulatorjs.org (which school filters tend to block)
+const EJS_VERSION = "4.2.3";
+const EJS_DATA = `https://cdn.jsdelivr.net/npm/@emulatorjs/emulatorjs@${EJS_VERSION}/data/`;
+const EJS_CORES = [
+  "a5200", "beetle_vb", "desmume", "desmume2015", "dosbox_pure", "fbalpha2012_cps1", "fbalpha2012_cps2", "fbneo",
+  "fceumm", "gambatte", "gearcoleco", "genesis_plus_gx", "handy", "mame2003", "mame2003_plus", "mednafen_ngp",
+  "mednafen_pce", "mednafen_pcfx", "mednafen_psx_hw", "mednafen_wswan", "melonds", "mgba", "mupen64plus_next",
+  "nestopia", "opera", "parallel_n64", "pcsx_rearmed", "picodrive", "ppsspp", "prosystem", "puae", "smsplus",
+  "snes9x", "stella2014", "virtualjaguar", "yabause",
+];
+
+// EmulatorJS looks files up by name in EJS_paths before using its data folder
+function corePaths() {
+  const p = {};
+  for (const c of EJS_CORES) {
+    const base = `https://cdn.jsdelivr.net/npm/@emulatorjs/core-${c}@${EJS_VERSION}/`;
+    p[c + ".json"] = base + "reports/" + c + ".json";
+    for (const v of ["", "-thread", "-legacy", "-thread-legacy"]) p[c + v + "-wasm.data"] = base + c + v + "-wasm.data";
+  }
+  return p;
+}
 
 // where pack.py's lib/ folder is published. meta and the manifest come from
 // raw github so updates show up within minutes; data tries jsdelivr first.
@@ -596,10 +634,6 @@ function card(g) {
       el("div", { className: "name", textContent: displayName(g.name) }),
       el("div", { className: "sys", textContent: sys.name })));
   c.onclick = () => launch(g);
-  if (heavyChd(g)) {
-    c.append(el("span", { className: "heavy", textContent: "heavy",
-      title: "chd ps1 games need the heavier beetle psx core. bin/cue runs on the lighter one and is recommended." }));
-  }
 
   const saves = el("span", { className: "saves", title: "save states",
     innerHTML: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 3h11l3 3v15H5z"/><path d="M8 3v5h7V3M8 21v-7h8v7"/></svg>states' });
@@ -706,18 +740,22 @@ for (const b of $("groupBy").children) {
 
 function statesDb() {
   return new Promise((resolve, reject) => {
-    const r = indexedDB.open("arcade", 1);
-    r.onupgradeneeded = () => r.result.createObjectStore("states", { keyPath: "id", autoIncrement: true }).createIndex("game", "game");
+    const r = indexedDB.open("arcade", 2);
+    r.onupgradeneeded = () => {
+      const db = r.result;
+      if (!db.objectStoreNames.contains("states")) db.createObjectStore("states", { keyPath: "id", autoIncrement: true }).createIndex("game", "game");
+      if (!db.objectStoreNames.contains("inject")) db.createObjectStore("inject", { keyPath: "game" });
+    };
     r.onsuccess = () => resolve(r.result);
     r.onerror = () => reject(r.error);
   });
 }
 
-async function statesTx(mode, fn) {
+async function statesTx(mode, fn, store = "states") {
   const db = await statesDb();
   return new Promise((resolve, reject) => {
-    const tx = db.transaction("states", mode);
-    const req = fn(tx.objectStore("states"));
+    const tx = db.transaction(store, mode);
+    const req = fn(tx.objectStore(store));
     tx.oncomplete = () => { db.close(); resolve(req && req.result); };
     tx.onerror = () => { db.close(); reject(tx.error); };
   });
@@ -736,8 +774,21 @@ function deleteState(id) {
   return statesTx("readwrite", (s) => s.delete(id));
 }
 
+// one queued save file per game, written into the core on its next launch
+function getInject(game) {
+  return statesTx("readonly", (s) => s.get(game), "inject");
+}
+
+function putInject(rec) {
+  return statesTx("readwrite", (s) => s.put(rec), "inject");
+}
+
+function deleteInject(game) {
+  return statesTx("readwrite", (s) => s.delete(game), "inject");
+}
+
 // the player page gets the same storage code
-const STATES_SRC = [statesDb, statesTx, statesFor, putState, deleteState].map(String).join("\n");
+const STATES_SRC = [statesDb, statesTx, statesFor, putState, deleteState, getInject, putInject, deleteInject].map(String).join("\n");
 
 const gameKey = (g) => g.core + "/" + g.name;
 
@@ -790,7 +841,7 @@ async function drawSaves() {
 
 async function openSaves(g) {
   savesGame = g;
-  $("savesTitle").textContent = g.name + " states";
+  $("savesTitle").textContent = displayName(g.name) + " states";
   await drawSaves();
   $("savesDlg").showModal();
 }
@@ -814,6 +865,103 @@ $("savesExportAll").onclick = async () => {
     download(st.data, stateFileName(st));
     await new Promise((r) => setTimeout(r, 250));
   }
+};
+
+// ---- in-game save import / export ----
+
+const ioGames = () => allGames().filter((g) => g.lib || g.url);
+
+function romStem(g) {
+  return gameFileName(g).replace(/\.[^.]+$/, "");
+}
+
+// EmulatorJS keeps saves in its own IndexedDB as /data/saves/<core>/<rom name>.srm
+async function readEjsSave(g) {
+  const dbs = indexedDB.databases ? await indexedDB.databases() : [{ name: "/data/saves" }];
+  if (!dbs.some((d) => d.name === "/data/saves")) return null;
+  const db = await new Promise((ok, bad) => {
+    const r = indexedDB.open("/data/saves");
+    r.onsuccess = () => ok(r.result);
+    r.onerror = () => bad(r.error);
+  });
+  try {
+    if (!db.objectStoreNames.contains("FILE_DATA")) return null;
+    const all = await new Promise((ok, bad) => {
+      const out = [];
+      const cur = db.transaction("FILE_DATA").objectStore("FILE_DATA").openCursor();
+      cur.onsuccess = () => {
+        const c = cur.result;
+        if (!c) return ok(out);
+        if (c.value && c.value.contents && String(c.key).endsWith("/" + romStem(g) + ".srm")) out.push({ key: c.key, ...c.value });
+        c.continue();
+      };
+      cur.onerror = () => bad(cur.error);
+    });
+    all.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    return all[0] || null;
+  } finally {
+    db.close();
+  }
+}
+
+function ioGame() {
+  return ioGames().find((g) => gameKey(g) === $("saveIOGame").value);
+}
+
+async function drawSaveIO() {
+  const g = ioGame();
+  if (!g) {
+    $("saveIOState").textContent = "no games to pick from yet";
+    return;
+  }
+  let pending = null, current = null;
+  try { pending = await getInject(gameKey(g)); } catch {}
+  try { current = await readEjsSave(g); } catch {}
+  const parts = [];
+  parts.push(current ? `current save: ${Math.ceil(current.contents.length / 1024)} KB, ${new Date(current.timestamp).toLocaleString()}` : "no save yet");
+  if (pending) parts.push(`queued import: ${pending.name}, applies on next boot`);
+  $("saveIOState").textContent = parts.join(" · ");
+  $("saveIOCancel").hidden = !pending;
+  $("saveIOExport").disabled = !current;
+}
+
+$("openSaveIO").onclick = () => {
+  const sel = $("saveIOGame");
+  const keep = sel.value;
+  sel.textContent = "";
+  const byCore = {};
+  for (const g of ioGames()) (byCore[g.core] ||= []).push(g);
+  for (const core of Object.keys(SYSTEMS).filter((k) => byCore[k])) {
+    const grp = el("optgroup", { label: SYSTEMS[core].name });
+    for (const g of byCore[core]) grp.append(el("option", { value: gameKey(g), textContent: displayName(g.name) }));
+    sel.append(grp);
+  }
+  if (keep && [...sel.options].some((o) => o.value === keep)) sel.value = keep;
+  drawSaveIO();
+  $("saveIO").showModal();
+};
+$("saveIOClose").onclick = () => $("saveIO").close();
+$("saveIOGame").onchange = drawSaveIO;
+$("saveIOImport").onclick = () => $("saveIOFile").click();
+$("saveIOFile").onchange = async () => {
+  const f = $("saveIOFile").files[0];
+  $("saveIOFile").value = "";
+  const g = ioGame();
+  if (!f || !g) return;
+  await putInject({ game: gameKey(g), name: f.name, data: new Blob([await f.arrayBuffer()]), time: Date.now() });
+  toast("save queued for " + displayName(g.name));
+  drawSaveIO();
+};
+$("saveIOCancel").onclick = async () => {
+  const g = ioGame();
+  if (g) await deleteInject(gameKey(g));
+  drawSaveIO();
+};
+$("saveIOExport").onclick = async () => {
+  const g = ioGame();
+  const cur = g && await readEjsSave(g);
+  if (!cur) return toast("no save yet for this game");
+  download(new Blob([cur.contents]), romStem(g) + ".srm");
 };
 
 // ---- library ----
@@ -1092,11 +1240,6 @@ function gameFileName(g) {
   return g.url ? baseName(g.url) : "";
 }
 
-// pcsx_rearmed (the default ps1 core) can't read chd; beetle psx can but is much heavier
-function heavyChd(g) {
-  return schemeOf(g.core) === "psx" && /\.chd$/i.test(gameFileName(g));
-}
-
 function gameSource(g) {
   if (g.lib) return encSource(g.lib.file);
   if (g.local) return { kind: "url", url: g.local, name: g.fileName };
@@ -1195,7 +1338,6 @@ function playerPage(game) {
   const cfg = {
     name: game.name,
     core: ejsCore(game.core),
-    emuCore: heavyChd(game) ? "mednafen_psx_hw" : null,
     scheme,
     // fbneo wants neogeo.zip next to the game as a zip, not unpacked like a normal bios
     biosAsFile: game.core === "neogeo",
@@ -1203,6 +1345,7 @@ function playerPage(game) {
     game: gameSource(game),
     bios: biosSource(game),
     data: EJS_DATA,
+    paths: corePaths(),
     controls: ejsControls(scheme),
     mouse: mouseBinds(scheme),
     updated: controls.updated,
@@ -1319,6 +1462,24 @@ ${STATES_SRC}
     live.textContent = label + " " + m;
   };
 
+  // chunks are immutable and still encrypted, so keeping them in the browser
+  // cache is safe and makes every launch after the first skip the download
+  let chunkCache = null;
+  try { chunkCache = await caches.open("arcade-chunks-v1"); } catch (e) {}
+
+  async function getChunk(urls) {
+    const key = "https://arcade.local/" + urls[0].split("/").slice(-3).join("/");
+    if (chunkCache) {
+      try {
+        const hit = await chunkCache.match(key);
+        if (hit) return await hit.arrayBuffer();
+      } catch (e) {}
+    }
+    const buf = await get(urls);
+    if (chunkCache) chunkCache.put(key, new Response(buf.slice(0))).catch(() => {});
+    return buf;
+  }
+
   async function get(urls) {
     let last;
     for (const u of urls) {
@@ -1357,7 +1518,7 @@ ${STATES_SRC}
     const key = await crypto.subtle.importKey("raw", hex(src.key), "AES-GCM", false, ["decrypt"]);
     const out = [];
     for (let i = 0; i < src.parts; i++) {
-      const blob = new Uint8Array(await get(src.bases.map((b) => b + "d/" + src.id + "/" + i)));
+      const blob = new Uint8Array(await getChunk(src.bases.map((b) => b + "d/" + src.id + "/" + i)));
       out.push(await crypto.subtle.decrypt(
         { name: "AES-GCM", iv: blob.subarray(0, 12), additionalData: new TextEncoder().encode(src.id + "/" + i) },
         key, blob.subarray(12)));
@@ -1419,10 +1580,11 @@ ${STATES_SRC}
   } catch (e) {}
 
   window.EJS_player = "#game";
-  window.EJS_core = cfg.emuCore || cfg.core;
+  window.EJS_core = cfg.core;
   window.EJS_gameName = cfg.name;
   window.EJS_gameUrl = game;
   window.EJS_pathtodata = cfg.data;
+  window.EJS_paths = cfg.paths;
   window.EJS_color = "#7c5cff";
   window.EJS_startOnLoaded = true;
   window.EJS_defaultControls = cfg.controls;
@@ -1591,7 +1753,7 @@ ${STATES_SRC}
     boot.classList.remove("wait");
   }
 
-  const core = row("start " + (cfg.emuCore || cfg.core));
+  const core = row("start " + cfg.core);
   live.textContent = "starting";
   const mirror = setInterval(() => {
     const emu = window.EJS_emulator;
@@ -1604,10 +1766,36 @@ ${STATES_SRC}
       live.textContent = "";
     }
   }, 200);
-  window.EJS_onGameStart = () => {
+  // same steps as EmulatorJS's own "import save file", run once for a queued save
+  async function injectSave() {
+    let pending = null;
+    try { pending = await getInject(cfg.stateKey); } catch (e) { return; }
+    if (!pending) return;
+    const step = row("inject save " + pending.name);
+    try {
+      const gm = window.EJS_emulator.gameManager;
+      const path = gm.getSaveFilePath();
+      let dir = "";
+      for (const part of path.split("/").slice(0, -1)) {
+        if (!part) continue;
+        dir += "/" + part;
+        if (!gm.FS.analyzePath(dir).exists) gm.FS.mkdir(dir);
+      }
+      if (gm.FS.analyzePath(path).exists) gm.FS.unlink(path);
+      gm.FS.writeFile(path, new Uint8Array(await pending.data.arrayBuffer()));
+      gm.loadSaveFiles();
+      await deleteInject(cfg.stateKey);
+      step.ok();
+    } catch (e) {
+      step.fail("couldn't inject the save: " + (e && e.message || e));
+    }
+  }
+
+  window.EJS_onGameStart = async () => {
     clearInterval(mirror);
     clearInterval(factTimer);
     core.ok();
+    await injectSave();
     live.textContent = "running";
     setTimeout(() => {
       boot.classList.add("gone");
@@ -1615,8 +1803,27 @@ ${STATES_SRC}
     }, 350);
   };
 
+  let lastText = "", lastChange = Date.now();
+  const stall = setInterval(() => {
+    const emu = window.EJS_emulator;
+    const t = (emu && emu.textElem && emu.textElem.innerText) || "";
+    if (t !== lastText) { lastText = t; lastChange = Date.now(); return; }
+    if (emu && emu.started) return clearInterval(stall);
+    if (Date.now() - lastChange > 30000) {
+      clearInterval(stall);
+      row("").fail("no progress for 30s. cdn.jsdelivr.net may be blocked or very slow on this network");
+    }
+  }, 1000);
+
   const s = document.createElement("script");
   s.src = cfg.data + "loader.js";
+  s.onerror = () => {
+    clearInterval(mirror);
+    clearInterval(stall);
+    clearInterval(factTimer);
+    core.fail("couldn't load EmulatorJS from cdn.jsdelivr.net. is it blocked on this network?");
+    live.textContent = "";
+  };
   document.body.appendChild(s);
 })();
 <\/script></body></html>`;
@@ -1630,7 +1837,6 @@ function confirmLeave(e) {
 window.addEventListener("beforeunload", confirmLeave);
 
 function launch(game) {
-  if (heavyChd(game)) toast("chd ps1 games run on a heavier core and may stutter; bin/cue is recommended");
   const html = playerPage(game);
   if ($("blank").checked) {
     const w = window.open("about:blank", "_blank");

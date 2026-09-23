@@ -532,8 +532,6 @@ int main(int argc, char **argv) {
             }
             snprintf(rel, sizeof rel, "%s/%s", sys[i]->d_name, fn);
             printf("%s\n", rel);
-            if (!strcmp(sys[i]->d_name, "psx") && fdot && !strcasecmp(fdot, ".chd"))
-                printf("  warning: chd ps1 games need the heavier beetle psx core; bin/cue (zipped) is recommended\n");
             int parts = store_file(fp, rel, id);
             size_t sl = stem_len(fn);
             char stem[PATHMAX], np[PATHMAX * 3];
