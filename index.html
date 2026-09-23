@@ -1,0 +1,1430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>arcade</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0b0c10;
+    --bg2: #111319;
+    --card: #161922;
+    --card2: #1c202b;
+    --line: #262b38;
+    --text: #eceef4;
+    --dim: #8b92a6;
+    --faint: #555c70;
+    --accent: #7c5cff;
+    --accent2: #22d3ee;
+    --danger: #ff5d73;
+    --radius: 14px;
+    --sans: "Space Grotesk", system-ui, sans-serif;
+    --mono: "JetBrains Mono", ui-monospace, monospace;
+  }
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0; min-height: 100vh; color: var(--text); font: 15px/1.45 var(--sans);
+    background:
+      radial-gradient(1200px 600px at 10% -10%, rgba(124, 92, 255, .18), transparent 60%),
+      radial-gradient(900px 500px at 110% 10%, rgba(34, 211, 238, .10), transparent 60%),
+      var(--bg);
+    background-attachment: fixed;
+  }
+  button, input, select { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  ::selection { background: var(--accent); color: #fff; }
+
+  #rail {
+    position: fixed; inset: 0 auto 0 0; width: 52px; z-index: 5;
+    display: flex; flex-direction: column; align-items: center; gap: 1px;
+    padding: 84px 0 16px; overflow-y: auto; scrollbar-width: none;
+    background: rgba(11, 12, 16, .6); backdrop-filter: blur(12px);
+    border-right: 1px solid var(--line);
+  }
+  #rail::-webkit-scrollbar { display: none; }
+  #rail button {
+    width: 34px; height: 24px; border: 0; border-radius: 6px; background: none;
+    font: 600 12px var(--mono); color: var(--dim);
+  }
+  #rail button:hover { background: var(--card2); color: var(--text); }
+  #rail button:disabled { color: var(--line); cursor: default; background: none; }
+
+  header {
+    position: sticky; top: 0; z-index: 4;
+    padding: 16px 24px 14px 76px;
+    background: rgba(11, 12, 16, .72); backdrop-filter: blur(14px);
+    border-bottom: 1px solid var(--line);
+  }
+  .bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; max-width: 1200px; margin: 0 auto; }
+  .logo { font-weight: 700; font-size: 22px; letter-spacing: -.02em; margin-right: 8px; }
+  .logo span { background: linear-gradient(90deg, var(--accent), var(--accent2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .search {
+    flex: 1; min-width: 180px; display: flex; align-items: center; gap: 8px;
+    background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 0 12px;
+  }
+  .search:focus-within { border-color: var(--accent); }
+  .search input { flex: 1; border: 0; background: none; outline: none; padding: 10px 0; }
+  .search kbd { font: 11px var(--mono); color: var(--faint); border: 1px solid var(--line); border-radius: 5px; padding: 1px 6px; }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--card); border: 1px solid var(--line); border-radius: 10px;
+    padding: 9px 14px; white-space: nowrap; transition: border-color .15s, background .15s;
+  }
+  .btn:hover { border-color: var(--faint); background: var(--card2); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.primary:hover { filter: brightness(1.1); }
+  .btn.ghost { background: none; }
+  .btn.small { padding: 5px 10px; font-size: 13px; border-radius: 8px; }
+  .btn svg { width: 16px; height: 16px; }
+
+  .toggle { display: inline-flex; align-items: center; gap: 8px; color: var(--dim); font-size: 13px; cursor: pointer; user-select: none; }
+  .toggle input { display: none; }
+  .toggle i { width: 34px; height: 20px; border-radius: 99px; background: var(--line); position: relative; transition: background .2s; }
+  .toggle i::after { content: ""; position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%; background: #fff; transition: transform .2s; }
+  .toggle input:checked + i { background: var(--accent); }
+  .toggle input:checked + i::after { transform: translateX(14px); }
+
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; max-width: 1200px; margin: 12px auto 0; }
+  .chip {
+    border: 1px solid var(--line); background: none; border-radius: 99px;
+    padding: 4px 12px; font-size: 13px; color: var(--dim);
+  }
+  .chip:hover { color: var(--text); border-color: var(--faint); }
+  .chip.on { background: var(--text); color: var(--bg); border-color: var(--text); }
+  .chip b { font: 600 11px var(--mono); opacity: .6; margin-left: 4px; }
+
+  main { padding: 8px 24px 80px 76px; }
+  .wrap { max-width: 1200px; margin: 0 auto; }
+  section h2 {
+    display: flex; align-items: baseline; gap: 10px;
+    font: 700 13px var(--mono); color: var(--dim); letter-spacing: .1em;
+    margin: 32px 0 12px; scroll-margin-top: 140px;
+  }
+  section h2::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; }
+
+  .card {
+    position: relative; text-align: left; padding: 0; overflow: hidden;
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    transition: transform .18s, border-color .18s, box-shadow .18s;
+  }
+  .card:hover { transform: translateY(-3px); border-color: var(--faint); box-shadow: 0 12px 30px rgba(0,0,0,.4); }
+  .cover {
+    aspect-ratio: 4 / 3; display: grid; place-items: center; position: relative;
+    background: linear-gradient(135deg, var(--c1), var(--c2)); overflow: hidden;
+  }
+  .cover img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .cover .mono { font: 700 44px var(--sans); color: rgba(255,255,255,.9); text-shadow: 0 4px 20px rgba(0,0,0,.35); letter-spacing: -.03em; }
+  .cover .play {
+    position: absolute; inset: 0; display: grid; place-items: center;
+    background: rgba(0,0,0,.45); opacity: 0; transition: opacity .18s;
+  }
+  .cover .play svg { width: 44px; height: 44px; fill: #fff; }
+  .card:hover .play { opacity: 1; }
+  .meta { padding: 10px 12px 12px; }
+  .meta .name { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .meta .sys { font: 11px var(--mono); color: var(--dim); text-transform: uppercase; letter-spacing: .06em; margin-top: 2px; }
+  .card .del {
+    position: absolute; top: 8px; right: 8px; width: 26px; height: 26px; border-radius: 8px;
+    border: 0; background: rgba(0,0,0,.55); color: #fff; opacity: 0; transition: opacity .15s;
+    display: grid; place-items: center; font-size: 16px; line-height: 1;
+  }
+  .card:hover .del { opacity: 1; }
+  .card .del:hover { background: var(--danger); }
+
+  .empty { text-align: center; padding: 80px 20px; color: var(--dim); }
+  .empty h3 { color: var(--text); font-size: 20px; margin: 0 0 6px; }
+  .empty .row { justify-content: center; margin-top: 16px; }
+
+  dialog {
+    width: min(560px, calc(100vw - 32px)); max-height: calc(100vh - 48px);
+    padding: 0; border: 1px solid var(--line); border-radius: 18px;
+    background: var(--bg2); color: var(--text); box-shadow: 0 30px 80px rgba(0,0,0,.6);
+  }
+  dialog.wide { width: min(760px, calc(100vw - 32px)); }
+  dialog::backdrop { background: rgba(5, 6, 9, .7); backdrop-filter: blur(4px); }
+  .dhead { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px; border-bottom: 1px solid var(--line); }
+  .dhead h3 { margin: 0; font-size: 18px; }
+  .dbody { padding: 18px 20px; overflow-y: auto; max-height: calc(100vh - 200px); }
+  .dfoot { display: flex; justify-content: flex-end; gap: 8px; padding: 14px 20px; border-top: 1px solid var(--line); }
+  .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
+  .field label { font-size: 12px; color: var(--dim); letter-spacing: .04em; }
+  .field input, .field select, select.plain {
+    background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; outline: none;
+  }
+  .field input:focus, .field select:focus { border-color: var(--accent); }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .row > .field { flex: 1; min-width: 140px; }
+  .hint { font-size: 12px; color: var(--faint); margin: -6px 0 14px; }
+  .x { border: 0; background: none; color: var(--dim); font-size: 22px; line-height: 1; padding: 4px; }
+  .x:hover { color: var(--text); }
+
+  .drop {
+    border: 1.5px dashed var(--line); border-radius: 12px; padding: 28px; text-align: center; color: var(--dim);
+    transition: border-color .15s, background .15s; cursor: pointer; margin-bottom: 14px;
+  }
+  .drop.over, .drop:hover { border-color: var(--accent); background: rgba(124, 92, 255, .06); }
+  .drop b { color: var(--text); }
+
+  .ctl-top { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
+  .ctl-top select { min-width: 200px; }
+  table.ctl { width: 100%; border-collapse: collapse; }
+  table.ctl th { text-align: left; font: 600 11px var(--mono); color: var(--faint); letter-spacing: .08em; padding: 0 8px 8px; }
+  table.ctl td { padding: 5px 8px; border-top: 1px solid var(--line); }
+  table.ctl td:first-child { font: 600 13px var(--mono); color: var(--dim); width: 38%; }
+  table.ctl tr.changed td:first-child { color: var(--accent2); }
+  .keycap {
+    min-width: 120px; padding: 6px 10px; border-radius: 8px; text-align: left;
+    background: var(--card); border: 1px solid var(--line); border-bottom-width: 3px; font: 13px var(--mono);
+  }
+  .keycap:hover { border-color: var(--faint); }
+  .keycap.listening { border-color: var(--accent); color: var(--accent); animation: pulse 1s infinite; }
+  .keycap.none { color: var(--faint); }
+  @keyframes pulse { 50% { opacity: .5; } }
+  table.ctl select { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; font-size: 13px; }
+
+  #overlay { position: fixed; inset: 0; z-index: 50; background: #000; display: none; }
+  #overlay iframe { width: 100%; height: 100%; border: 0; }
+  #overlay .btn { position: absolute; top: 10px; right: 10px; z-index: 51; background: rgba(0,0,0,.6); }
+
+  .unlock {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    margin: 24px 0 0; padding: 16px 18px; border-radius: var(--radius);
+    background: linear-gradient(135deg, rgba(124, 92, 255, .14), rgba(34, 211, 238, .06));
+    border: 1px solid rgba(124, 92, 255, .35);
+  }
+  .unlock[hidden] { display: none; }
+  .unlock > svg { width: 22px; height: 22px; color: var(--accent); flex: none; }
+  .unlock .utext { flex: 1; min-width: 180px; display: flex; flex-direction: column; }
+  .unlock .utext span { color: var(--dim); font-size: 13px; }
+  .unlock .utext span.err { color: var(--danger); }
+  .unlock input[type=password] {
+    background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; outline: none; width: 200px;
+  }
+  .unlock input[type=password]:focus { border-color: var(--accent); }
+
+  .states { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+  .state { background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .state .shot { aspect-ratio: 4 / 3; background: var(--bg) center / cover no-repeat; image-rendering: pixelated; }
+  .state .info { padding: 8px 10px 10px; display: flex; align-items: center; gap: 6px; }
+  .state .info span { flex: 1; font: 12px var(--mono); color: var(--dim); }
+  .states .none { grid-column: 1 / -1; text-align: center; color: var(--dim); padding: 30px 0; }
+  .card .saves {
+    position: absolute; top: 8px; left: 8px; height: 26px; padding: 0 9px; border-radius: 8px;
+    background: rgba(0,0,0,.55); color: #fff; opacity: 0; transition: opacity .15s;
+    display: flex; align-items: center; gap: 5px; font-size: 12px;
+  }
+  .card .saves svg { width: 13px; height: 13px; }
+  .card:hover .saves { opacity: 1; }
+  .card .saves:hover { background: var(--accent); }
+
+  #toast {
+    position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 20px); z-index: 60;
+    background: var(--card2); border: 1px solid var(--line); border-radius: 10px; padding: 10px 16px;
+    opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s;
+  }
+  #toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+  @media (max-width: 640px) {
+    #rail { display: none; }
+    header, main { padding-left: 16px; padding-right: 16px; }
+    .logo { width: 100%; }
+    .grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+  }
+</style>
+</head>
+<body>
+
+<nav id="rail"></nav>
+
+<header>
+  <div class="bar">
+    <div class="logo"><span>arcade</span></div>
+    <label class="search">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+      <input id="search" type="text" placeholder="search games" autocomplete="off" spellcheck="false">
+      <kbd>/</kbd>
+    </label>
+    <label class="toggle" title="open games in an about:blank tab"><input type="checkbox" id="blank" checked><i></i>about:blank</label>
+    <button class="btn" id="openControls">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></svg>
+      controls
+    </button>
+    <button class="btn" id="openLocal">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20h16M12 4v12m0 0-4-4m4 4 4-4"/></svg>
+      local file
+    </button>
+    <button class="btn" id="lockBtn" hidden title="forget the password on this device">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+      lock
+    </button>
+    <button class="btn primary" id="openAdd">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+      add game
+    </button>
+  </div>
+  <div class="chips" id="chips"></div>
+</header>
+
+<main>
+  <div class="wrap">
+    <form class="unlock" id="unlock" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+      <div class="utext"><b>library locked</b><span id="unlockMsg">enter the password to load your games</span></div>
+      <input type="password" id="pw" placeholder="password" autocomplete="current-password" required>
+      <label class="toggle"><input type="checkbox" id="remember"><i></i>remember here</label>
+      <button class="btn primary" id="unlockBtn">unlock</button>
+    </form>
+  </div>
+  <div class="wrap" id="list"></div>
+</main>
+
+<dialog id="addDlg">
+  <form method="dialog">
+    <div class="dhead"><h3>add a game</h3><button class="x" value="cancel" formnovalidate>×</button></div>
+    <div class="dbody">
+      <div class="field"><label>name</label><input id="addName" required></div>
+      <div class="field"><label>rom url</label><input id="addUrl" type="url" required placeholder="https://cdn.jsdelivr.net/gh/you/roms@main/game.sfc"></div>
+      <p class="hint">has to allow cross-origin fetches. jsdelivr does, github release downloads don't.</p>
+      <div class="row">
+        <div class="field"><label>system</label><select id="addCore"></select></div>
+        <div class="field"><label>split parts (optional)</label><input id="addParts" placeholder="1-4"></div>
+      </div>
+      <div class="field"><label>bios url (optional)</label><input id="addBios" type="url"></div>
+      <div class="field"><label>cover image url (optional)</label><input id="addImg" type="url"></div>
+    </div>
+    <div class="dfoot">
+      <button class="btn ghost" value="cancel" formnovalidate>cancel</button>
+      <button class="btn primary" id="addSave" value="save">add</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="localDlg">
+  <form method="dialog">
+    <div class="dhead"><h3>play a local file</h3><button class="x" value="cancel" formnovalidate>×</button></div>
+    <div class="dbody">
+      <div class="drop" id="drop"><b>drop a rom here</b><br>or click to pick one</div>
+      <input type="file" id="localFile" hidden>
+      <div class="row">
+        <div class="field"><label>file</label><input id="localName" readonly placeholder="nothing picked"></div>
+        <div class="field"><label>system</label><select id="localCore"></select></div>
+      </div>
+    </div>
+    <div class="dfoot">
+      <button class="btn ghost" value="cancel">cancel</button>
+      <button class="btn primary" id="localPlay" value="play">play</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="ctlDlg" class="wide">
+  <div class="dhead"><h3>controls</h3><button class="x" id="ctlClose">×</button></div>
+  <div class="dbody">
+    <div class="ctl-top">
+      <select class="plain" id="ctlScheme"></select>
+      <button class="btn small" id="ctlReset">reset this system</button>
+      <select class="plain" id="ctlNeogeo" hidden title="which AES bios fbneo boots"></select>
+    </div>
+    <p class="hint" style="margin:0 0 14px">click a key to rebind it. esc cancels, backspace clears. mouse bindings work while the cursor is over the game. these override whatever was set in the emulator's own menu.</p>
+    <table class="ctl">
+      <thead><tr><th>button</th><th>keyboard</th><th>mouse</th></tr></thead>
+      <tbody id="ctlBody"></tbody>
+    </table>
+  </div>
+</dialog>
+
+<dialog id="savesDlg" class="wide">
+  <div class="dhead"><h3 id="savesTitle">save states</h3><button class="x" id="savesClose">×</button></div>
+  <div class="dbody">
+    <div class="ctl-top">
+      <button class="btn small" id="savesImport">import .state files</button>
+      <button class="btn small" id="savesExportAll">export all</button>
+      <input type="file" id="savesFile" accept=".state" multiple hidden>
+    </div>
+    <p class="hint" style="margin:0 0 14px">states made with the save state button in a game land here. exported files also load through the game's load state menu.</p>
+    <div class="states" id="savesList"></div>
+  </div>
+</dialog>
+
+<div id="overlay"><button class="btn" id="closeOverlay">close</button><iframe id="frame" allow="autoplay; fullscreen; gamepad"></iframe></div>
+<div id="toast"></div>
+
+<script>
+// url: rom/iso url. parts: [min, max] when the file is split into url.part1..N
+// to get under a cdn's size limit. bios and img are optional.
+const GAMES = [
+  // { name: "Example", core: "snes", url: "https://cdn.jsdelivr.net/gh/you/roms@main/snes/example.sfc" },
+  // { name: "Big Disc", core: "psx", url: "https://cdn.jsdelivr.net/gh/you/roms@main/psx/big.iso", parts: [1, 4], bios: "https://..." },
+];
+
+const EJS_DATA = "https://cdn.emulatorjs.org/stable/data/";
+
+// where pack.py's lib/ folder is published. meta and the manifest come from
+// raw github so updates show up within minutes; data tries jsdelivr first.
+const LIBRARY = {
+  meta: "https://raw.githubusercontent.com/devcheckra1n/arcade/main/lib/",
+  data: [
+    "https://cdn.jsdelivr.net/gh/devcheckra1n/arcade@main/lib/",
+    "https://raw.githubusercontent.com/devcheckra1n/arcade/main/lib/",
+  ],
+};
+
+const SYSTEMS = {
+  nes:        { name: "NES",                colors: ["#e11d48", "#7f1d1d"] },
+  snes:       { name: "SNES",               colors: ["#7c3aed", "#312e81"] },
+  n64:        { name: "Nintendo 64",        colors: ["#16a34a", "#1e3a8a"] },
+  gb:         { name: "Game Boy",           colors: ["#84cc16", "#365314"] },
+  gba:        { name: "Game Boy Advance",   colors: ["#6366f1", "#3b0764"] },
+  nds:        { name: "Nintendo DS",        colors: ["#94a3b8", "#334155"] },
+  vb:         { name: "Virtual Boy",        colors: ["#dc2626", "#000000"] },
+  psx:        { name: "PlayStation",        colors: ["#64748b", "#1e293b"] },
+  psp:        { name: "PSP",                colors: ["#0f172a", "#475569"] },
+  segaMD:     { name: "Mega Drive",         colors: ["#2563eb", "#111827"] },
+  segaMS:     { name: "Master System",      colors: ["#ef4444", "#1f2937"] },
+  segaGG:     { name: "Game Gear",          colors: ["#1d4ed8", "#0f172a"] },
+  segaCD:     { name: "Sega CD",            colors: ["#0ea5e9", "#1e1b4b"] },
+  sega32x:    { name: "32X",                colors: ["#f59e0b", "#7c2d12"] },
+  segaSaturn: { name: "Saturn",             colors: ["#475569", "#020617"] },
+  atari2600:  { name: "Atari 2600",         colors: ["#b45309", "#292524"] },
+  atari7800:  { name: "Atari 7800",         colors: ["#c2410c", "#1c1917"] },
+  lynx:       { name: "Lynx",               colors: ["#ea580c", "#431407"] },
+  jaguar:     { name: "Jaguar",             colors: ["#dc2626", "#450a0a"] },
+  pce:        { name: "PC Engine",          colors: ["#f97316", "#1e3a8a"] },
+  pcfx:       { name: "PC-FX",              colors: ["#fb923c", "#312e81"] },
+  ngp:        { name: "Neo Geo Pocket",     colors: ["#0891b2", "#164e63"] },
+  ws:         { name: "WonderSwan",         colors: ["#a855f7", "#1e1b4b"] },
+  coleco:     { name: "ColecoVision",       colors: ["#57534e", "#0c0a09"] },
+  "3do":      { name: "3DO",                colors: ["#eab308", "#422006"] },
+  arcade:     { name: "Arcade",             colors: ["#f43f5e", "#4c0519"] },
+  mame:       { name: "Arcade (MAME)",      colors: ["#fb7185", "#1f2937"] },
+  neogeo:     { name: "Neo Geo AES",        colors: ["#facc15", "#1c1917"] },
+  dos:        { name: "DOS",                colors: ["#1d4ed8", "#020617"] },
+};
+
+// Everything below mirrors EmulatorJS's own control tables (emulator.js,
+// initControlVars and the per-system button lists) so bindings line up.
+const KEYMAP = {
+  8: "backspace", 9: "tab", 13: "enter", 16: "shift", 17: "ctrl", 18: "alt", 19: "pause/break",
+  20: "caps lock", 27: "escape", 32: "space", 33: "page up", 34: "page down", 35: "end", 36: "home",
+  37: "left arrow", 38: "up arrow", 39: "right arrow", 40: "down arrow", 45: "insert", 46: "delete",
+  48: "0", 49: "1", 50: "2", 51: "3", 52: "4", 53: "5", 54: "6", 55: "7", 56: "8", 57: "9",
+  65: "a", 66: "b", 67: "c", 68: "d", 69: "e", 70: "f", 71: "g", 72: "h", 73: "i", 74: "j", 75: "k",
+  76: "l", 77: "m", 78: "n", 79: "o", 80: "p", 81: "q", 82: "r", 83: "s", 84: "t", 85: "u", 86: "v",
+  87: "w", 88: "x", 89: "y", 90: "z", 91: "left window key", 92: "right window key", 93: "select key",
+  96: "numpad 0", 97: "numpad 1", 98: "numpad 2", 99: "numpad 3", 100: "numpad 4", 101: "numpad 5",
+  102: "numpad 6", 103: "numpad 7", 104: "numpad 8", 105: "numpad 9", 106: "multiply", 107: "add",
+  109: "subtract", 110: "decimal point", 111: "divide", 112: "f1", 113: "f2", 114: "f3", 115: "f4",
+  116: "f5", 117: "f6", 118: "f7", 119: "f8", 120: "f9", 121: "f10", 122: "f11", 123: "f12",
+  144: "num lock", 145: "scroll lock", 186: "semi-colon", 187: "equal sign", 188: "comma", 189: "dash",
+  190: "period", 191: "forward slash", 192: "grave accent", 219: "open bracket", 220: "back slash",
+  221: "close braket", 222: "single quote",
+};
+
+const DEFAULT_PAD = {
+  0: [88, "BUTTON_2"], 1: [83, "BUTTON_4"], 2: [86, "SELECT"], 3: [13, "START"],
+  4: [38, "DPAD_UP"], 5: [40, "DPAD_DOWN"], 6: [37, "DPAD_LEFT"], 7: [39, "DPAD_RIGHT"],
+  8: [90, "BUTTON_1"], 9: [65, "BUTTON_3"], 10: [81, "LEFT_TOP_SHOULDER"], 11: [69, "RIGHT_TOP_SHOULDER"],
+  12: [9, "LEFT_BOTTOM_SHOULDER"], 13: [82, "RIGHT_BOTTOM_SHOULDER"], 14: [0, "LEFT_STICK"], 15: [0, "RIGHT_STICK"],
+  16: [72, "LEFT_STICK_X:+1"], 17: [70, "LEFT_STICK_X:-1"], 18: [71, "LEFT_STICK_Y:+1"], 19: [84, "LEFT_STICK_Y:-1"],
+  20: [76, "RIGHT_STICK_X:+1"], 21: [74, "RIGHT_STICK_X:-1"], 22: [75, "RIGHT_STICK_Y:+1"], 23: [73, "RIGHT_STICK_Y:-1"],
+  24: [49, ""], 25: [50, ""], 26: [51, ""], 27: [0, ""], 28: [0, ""], 29: [0, ""],
+};
+
+const DPAD = [[4, "UP"], [5, "DOWN"], [6, "LEFT"], [7, "RIGHT"]];
+const BUTTONS = {
+  gb:   [[8, "A"], [0, "B"], [2, "SELECT"], [3, "START"], ...DPAD],
+  nes:  [[8, "A"], [0, "B"], [2, "SELECT"], [3, "START"], ...DPAD, [10, "SWAP DISKS"], [11, "EJECT/INSERT DISK"]],
+  snes: [[8, "A"], [0, "B"], [9, "X"], [1, "Y"], [2, "SELECT"], [3, "START"], ...DPAD, [10, "L"], [11, "R"]],
+  n64:  [[0, "A"], [1, "B"], [3, "START"], [4, "D-PAD UP"], [5, "D-PAD DOWN"], [6, "D-PAD LEFT"], [7, "D-PAD RIGHT"],
+         [10, "L"], [11, "R"], [12, "Z"], [19, "STICK UP"], [18, "STICK DOWN"], [17, "STICK LEFT"], [16, "STICK RIGHT"],
+         [23, "C-PAD UP"], [22, "C-PAD DOWN"], [21, "C-PAD LEFT"], [20, "C-PAD RIGHT"]],
+  gba:  [[8, "A"], [0, "B"], [10, "L"], [11, "R"], [2, "SELECT"], [3, "START"], ...DPAD],
+  nds:  [[8, "A"], [0, "B"], [9, "X"], [1, "Y"], [2, "SELECT"], [3, "START"], ...DPAD, [10, "L"], [11, "R"], [14, "MICROPHONE"]],
+  vb:   [[8, "A"], [0, "B"], [10, "L"], [11, "R"], [2, "SELECT"], [3, "START"],
+         [4, "LEFT D-PAD UP"], [5, "LEFT D-PAD DOWN"], [6, "LEFT D-PAD LEFT"], [7, "LEFT D-PAD RIGHT"],
+         [19, "RIGHT D-PAD UP"], [18, "RIGHT D-PAD DOWN"], [17, "RIGHT D-PAD LEFT"], [16, "RIGHT D-PAD RIGHT"]],
+  segaCD:  [[1, "A"], [0, "B"], [8, "C"], [10, "X"], [9, "Y"], [11, "Z"], [3, "START"], [2, "MODE"], ...DPAD],
+  segaMS:  [[0, "BUTTON 1 / START"], [8, "BUTTON 2"], ...DPAD],
+  segaGG:  [[0, "BUTTON 1"], [8, "BUTTON 2"], [3, "START"], ...DPAD],
+  segaSaturn: [[1, "A"], [0, "B"], [8, "C"], [9, "X"], [10, "Y"], [11, "Z"], [12, "L"], [13, "R"], [3, "START"], ...DPAD],
+  "3do":   [[1, "A"], [0, "B"], [8, "C"], [10, "L"], [11, "R"], [2, "X"], [3, "P"], ...DPAD],
+  atari2600: [[0, "FIRE"], [2, "SELECT"], [3, "RESET"], ...DPAD, [10, "LEFT DIFFICULTY A"], [12, "LEFT DIFFICULTY B"],
+              [11, "RIGHT DIFFICULTY A"], [13, "RIGHT DIFFICULTY B"], [14, "COLOR"], [15, "B/W"]],
+  atari7800: [[0, "BUTTON 1"], [8, "BUTTON 2"], [2, "SELECT"], [3, "PAUSE"], [9, "RESET"], ...DPAD,
+              [10, "LEFT DIFFICULTY"], [11, "RIGHT DIFFICULTY"]],
+  lynx:   [[8, "A"], [0, "B"], [10, "OPTION 1"], [11, "OPTION 2"], [3, "START"], ...DPAD],
+  jaguar: [[8, "A"], [0, "B"], [1, "C"], [2, "PAUSE"], [3, "OPTION"], ...DPAD],
+  pce:    [[8, "I"], [0, "II"], [2, "SELECT"], [3, "RUN"], ...DPAD],
+  ngp:    [[0, "A"], [8, "B"], [3, "OPTION"], ...DPAD],
+  ws:     [[8, "A"], [0, "B"], [3, "START"], [4, "X UP"], [5, "X DOWN"], [6, "X LEFT"], [7, "X RIGHT"],
+           [13, "Y UP"], [12, "Y DOWN"], [10, "Y LEFT"], [11, "Y RIGHT"]],
+  coleco: [[8, "LEFT BUTTON"], [0, "RIGHT BUTTON"], [9, "1"], [1, "2"], [11, "3"], [10, "4"], [13, "5"], [12, "6"],
+           [15, "7"], [14, "8"], [2, "*"], [3, "#"], ...DPAD],
+  pcfx:   [[8, "I"], [0, "II"], [9, "III"], [1, "IV"], [10, "V"], [11, "VI"], [3, "RUN"], [2, "SELECT"],
+           [12, "MODE1"], [13, "MODE2"], ...DPAD],
+  psp:    [[9, "TRIANGLE"], [1, "SQUARE"], [0, "CROSS"], [8, "CIRCLE"], [2, "SELECT"], [3, "START"], ...DPAD,
+           [10, "L"], [11, "R"], [19, "STICK UP"], [18, "STICK DOWN"], [17, "STICK LEFT"], [16, "STICK RIGHT"]],
+  default: [[0, "B"], [1, "Y"], [2, "SELECT"], [3, "START"], ...DPAD, [8, "A"], [9, "X"], [10, "L"], [11, "R"],
+            [12, "L2"], [13, "R2"], [14, "L3"], [15, "R3"], [19, "L STICK UP"], [18, "L STICK DOWN"],
+            [17, "L STICK LEFT"], [16, "L STICK RIGHT"], [23, "R STICK UP"], [22, "R STICK DOWN"],
+            [21, "R STICK LEFT"], [20, "R STICK RIGHT"]],
+};
+BUTTONS.sega32x = BUTTONS.segaCD;
+BUTTONS.neogeo = [[0, "A"], [8, "B"], [1, "C"], [9, "D"], [2, "COIN"], [3, "START"], ...DPAD];
+const HOTKEYS = [[24, "QUICK SAVE STATE"], [25, "QUICK LOAD STATE"], [26, "CHANGE STATE SLOT"],
+                 [27, "FAST FORWARD"], [29, "SLOW MOTION"], [28, "REWIND"]];
+
+function buttonsFor(scheme) {
+  let list = (BUTTONS[scheme] || BUTTONS.default).map((b) => [...b]);
+  if (scheme === "arcade" || scheme === "mame") {
+    list = list.map(([id, label]) => [id, id === 2 ? "INSERT COIN" : label]);
+  }
+  return [...list, ...HOTKEYS];
+}
+
+const MOUSE = { "": "none", m0: "left click", m1: "middle click", m2: "right click", wu: "wheel up", wd: "wheel down" };
+
+const EXT_CORE = {
+  nes: "nes", fds: "nes", sfc: "snes", smc: "snes", n64: "n64", z64: "n64", v64: "n64",
+  gb: "gb", gbc: "gb", gba: "gba", nds: "nds", vb: "vb", md: "segaMD", gen: "segaMD", smd: "segaMD",
+  sms: "segaMS", gg: "segaGG", "32x": "sega32x", a26: "atari2600", a78: "atari7800",
+  lnx: "lynx", j64: "jaguar", pce: "pce", ngp: "ngp", ngc: "ngp", ws: "ws", wsc: "ws", col: "coleco",
+  iso: "psx", cue: "psx", pbp: "psx", chd: "psx", cso: "psp", zip: "arcade",
+};
+
+const $ = (id) => document.getElementById(id);
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+};
+
+let saved = store.get("arcade.games", []);
+let library = { state: LIBRARY.meta ? "loading" : "none", key: null, games: [], bios: {}, covers: {} };
+let controls = store.get("arcade.controls", { updated: 0, schemes: {} });
+let filter = "all";
+
+function toast(msg) {
+  const t = $("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(toast.t);
+  toast.t = setTimeout(() => t.classList.remove("show"), 2200);
+}
+
+function allGames() {
+  return [
+    ...library.games.map((e) => ({ name: e.name, core: e.core, lib: e, img: e.cover && library.covers[e.cover.id], custom: -1 })),
+    ...GAMES.map((g) => ({ ...g, custom: -1 })),
+    ...saved.map((g, i) => ({ ...g, custom: i })),
+  ].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+}
+
+function letterOf(name) {
+  const c = name.trim()[0]?.toUpperCase() || "#";
+  return c >= "A" && c <= "Z" ? c : "#";
+}
+
+function initials(name) {
+  const words = name.replace(/[^\p{L}\p{N} ]/gu, "").split(/\s+/).filter(Boolean);
+  return (words.length > 1 ? words[0][0] + words[1][0] : (words[0] || "?").slice(0, 2)).toUpperCase();
+}
+
+function el(tag, props = {}, ...kids) {
+  const e = document.createElement(tag);
+  Object.assign(e, props);
+  e.append(...kids);
+  return e;
+}
+
+const PLAY_ICON = '<svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>';
+
+function card(g) {
+  const sys = SYSTEMS[g.core] || { name: g.core, colors: ["#334155", "#0f172a"] };
+  const cover = el("div", { className: "cover" });
+  cover.style.setProperty("--c1", sys.colors[0]);
+  cover.style.setProperty("--c2", sys.colors[1]);
+  cover.append(el("span", { className: "mono", textContent: initials(g.name) }));
+  if (g.img) {
+    const img = el("img", { src: g.img, alt: "", loading: "lazy" });
+    img.onerror = () => img.remove();
+    cover.append(img);
+  }
+  cover.append(el("div", { className: "play", innerHTML: PLAY_ICON }));
+
+  const c = el("button", { className: "card", title: g.name },
+    cover,
+    el("div", { className: "meta" },
+      el("div", { className: "name", textContent: g.name }),
+      el("div", { className: "sys", textContent: sys.name })));
+  c.onclick = () => launch(g);
+
+  const saves = el("span", { className: "saves", title: "save states",
+    innerHTML: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 3h11l3 3v15H5z"/><path d="M8 3v5h7V3M8 21v-7h8v7"/></svg>states' });
+  saves.onclick = (e) => { e.stopPropagation(); openSaves(g); };
+  c.append(saves);
+
+  if (g.custom >= 0) {
+    const del = el("span", { className: "del", title: "remove", textContent: "×" });
+    del.onclick = (e) => {
+      e.stopPropagation();
+      saved.splice(g.custom, 1);
+      store.set("arcade.games", saved);
+      render();
+      toast("removed " + g.name);
+    };
+    c.append(del);
+  }
+  return c;
+}
+
+function renderChips(games) {
+  const counts = {};
+  for (const g of games) counts[g.core] = (counts[g.core] || 0) + 1;
+  const chips = $("chips");
+  chips.textContent = "";
+  if (!games.length) return;
+  if (filter !== "all" && !counts[filter]) filter = "all";
+  const add = (key, label, n) => {
+    const b = el("button", { className: "chip" + (filter === key ? " on" : "") }, label, el("b", { textContent: n }));
+    b.onclick = () => { filter = key; render(); };
+    chips.append(b);
+  };
+  add("all", "all", games.length);
+  for (const k of Object.keys(counts).sort((a, b) => (SYSTEMS[a]?.name || a).localeCompare(SYSTEMS[b]?.name || b))) {
+    add(k, SYSTEMS[k]?.name || k, counts[k]);
+  }
+}
+
+function render() {
+  const everything = allGames();
+  renderChips(everything);
+  const q = $("search").value.trim().toLowerCase();
+  const games = everything.filter((g) =>
+    (filter === "all" || g.core === filter) && g.name.toLowerCase().includes(q));
+
+  const groups = {};
+  for (const g of games) (groups[letterOf(g.name)] ||= []).push(g);
+  const letters = ["#", ..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"];
+
+  $("unlock").hidden = library.state !== "locked";
+  $("lockBtn").hidden = library.state !== "open";
+
+  const list = $("list");
+  list.textContent = "";
+  if (library.state === "loading") {
+    list.append(el("div", { className: "empty", textContent: "loading library..." }));
+  } else if (!everything.length && library.state === "locked") {
+    // the unlock form says it all
+  } else if (!everything.length) {
+    const add = el("button", { className: "btn primary", textContent: "add a game" });
+    add.onclick = () => $("openAdd").click();
+    const local = el("button", { className: "btn", textContent: "play a local file" });
+    local.onclick = () => $("openLocal").click();
+    list.append(el("div", { className: "empty" },
+      el("h3", { textContent: "no games yet" }),
+      el("div", { textContent: "add one by url, or play a rom straight off this computer." }),
+      el("div", { className: "row" }, add, local)));
+  } else if (!games.length) {
+    list.append(el("div", { className: "empty" }, el("h3", { textContent: "nothing matches" })));
+  }
+  for (const l of letters) {
+    if (!groups[l]) continue;
+    list.append(el("section", { id: "sec-" + l },
+      el("h2", { textContent: l }),
+      el("div", { className: "grid" }, ...groups[l].map(card))));
+  }
+
+  const rail = $("rail");
+  rail.textContent = "";
+  for (const l of letters) {
+    const b = el("button", { textContent: l, disabled: !groups[l] });
+    b.onclick = () => $("sec-" + l).scrollIntoView();
+    rail.append(b);
+  }
+}
+
+function statesDb() {
+  return new Promise((resolve, reject) => {
+    const r = indexedDB.open("arcade", 1);
+    r.onupgradeneeded = () => r.result.createObjectStore("states", { keyPath: "id", autoIncrement: true }).createIndex("game", "game");
+    r.onsuccess = () => resolve(r.result);
+    r.onerror = () => reject(r.error);
+  });
+}
+
+async function statesTx(mode, fn) {
+  const db = await statesDb();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction("states", mode);
+    const req = fn(tx.objectStore("states"));
+    tx.oncomplete = () => { db.close(); resolve(req && req.result); };
+    tx.onerror = () => { db.close(); reject(tx.error); };
+  });
+}
+
+async function statesFor(game) {
+  const list = (await statesTx("readonly", (s) => s.index("game").getAll(game))) || [];
+  return list.sort((a, b) => b.time - a.time);
+}
+
+function putState(rec) {
+  return statesTx("readwrite", (s) => s.add(rec));
+}
+
+function deleteState(id) {
+  return statesTx("readwrite", (s) => s.delete(id));
+}
+
+// the player page gets the same storage code
+const STATES_SRC = [statesDb, statesTx, statesFor, putState, deleteState].map(String).join("\n");
+
+const gameKey = (g) => g.core + "/" + g.name;
+
+// ---- save states ----
+
+let savesGame = null;
+let savesUrls = [];
+
+function download(blob, name) {
+  const a = el("a", { href: URL.createObjectURL(blob), download: name });
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+function stateFileName(st) {
+  const d = new Date(st.time);
+  const p = (n) => String(n).padStart(2, "0");
+  const stamp = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}-${p(d.getMinutes())}-${p(d.getSeconds())}`;
+  return `${st.name.replace(/[\\/:*?"<>|]/g, "")} ${stamp}.state`;
+}
+
+async function drawSaves() {
+  savesUrls.forEach(URL.revokeObjectURL);
+  savesUrls = [];
+  const list = $("savesList");
+  const states = await statesFor(gameKey(savesGame));
+  list.textContent = "";
+  $("savesExportAll").disabled = !states.length;
+  if (!states.length) {
+    list.append(el("div", { className: "none", textContent: "no save states for this game yet" }));
+    return;
+  }
+  for (const st of states) {
+    const shot = el("div", { className: "shot" });
+    if (st.shot) {
+      const u = URL.createObjectURL(st.shot);
+      savesUrls.push(u);
+      shot.style.backgroundImage = `url("${u}")`;
+    }
+    const exp = el("button", { className: "btn small", textContent: "export" });
+    exp.onclick = () => download(st.data, stateFileName(st));
+    const del = el("button", { className: "btn small ghost", textContent: "delete" });
+    del.onclick = async () => { await deleteState(st.id); drawSaves(); };
+    list.append(el("div", { className: "state" }, shot,
+      el("div", { className: "info" }, el("span", { textContent: new Date(st.time).toLocaleString() }), exp, del)));
+  }
+}
+
+async function openSaves(g) {
+  savesGame = g;
+  $("savesTitle").textContent = g.name + " states";
+  await drawSaves();
+  $("savesDlg").showModal();
+}
+
+$("savesClose").onclick = () => $("savesDlg").close();
+$("savesDlg").addEventListener("close", () => { savesUrls.forEach(URL.revokeObjectURL); savesUrls = []; });
+$("savesImport").onclick = () => $("savesFile").click();
+$("savesFile").onchange = async () => {
+  const files = [...$("savesFile").files];
+  $("savesFile").value = "";
+  for (const f of files) {
+    await putState({ game: gameKey(savesGame), name: savesGame.name, core: savesGame.core,
+      time: f.lastModified || Date.now(), data: new Blob([await f.arrayBuffer()]), shot: null });
+  }
+  toast(`imported ${files.length} state${files.length === 1 ? "" : "s"}`);
+  drawSaves();
+};
+$("savesExportAll").onclick = async () => {
+  const states = await statesFor(gameKey(savesGame));
+  for (const st of states) {
+    download(st.data, stateFileName(st));
+    await new Promise((r) => setTimeout(r, 250));
+  }
+};
+
+// ---- library ----
+
+const unhex = (h) => new Uint8Array(h.match(/../g).map((b) => parseInt(b, 16)));
+const tohex = (b) => [...new Uint8Array(b)].map((x) => x.toString(16).padStart(2, "0")).join("");
+
+async function aes(keyHex) {
+  return crypto.subtle.importKey("raw", unhex(keyHex), "AES-GCM", false, ["decrypt"]);
+}
+
+async function unseal(blob, key, aad) {
+  const b = new Uint8Array(blob);
+  return crypto.subtle.decrypt(
+    { name: "AES-GCM", iv: b.subarray(0, 12), additionalData: new TextEncoder().encode(aad) }, key, b.subarray(12));
+}
+
+async function fetchOk(urls, opts) {
+  let last;
+  for (const u of urls) {
+    try {
+      const r = await fetch(u, opts);
+      if (r.ok) return r;
+      last = new Error(String(r.status));
+    } catch (e) { last = e; }
+  }
+  throw last;
+}
+
+async function openLibrary(keyHex) {
+  const key = await aes(keyHex);
+  const m = await fetchOk([LIBRARY.meta + "m"], { cache: "no-cache" });
+  const manifest = JSON.parse(new TextDecoder().decode(await unseal(await m.arrayBuffer(), key, "manifest")));
+  library = { state: "open", key: keyHex, games: manifest.games || [], bios: manifest.bios || {}, covers: {} };
+  loadCovers(key);
+}
+
+async function loadCovers(key) {
+  for (const g of library.games) {
+    if (!g.cover || library.state !== "open") continue;
+    try {
+      const parts = [];
+      for (let i = 0; i < g.cover.parts; i++) {
+        const r = await fetchOk(LIBRARY.data.map((b) => b + "d/" + g.cover.id + "/" + i));
+        parts.push(await unseal(await r.arrayBuffer(), key, g.cover.id + "/" + i));
+      }
+      library.covers[g.cover.id] = URL.createObjectURL(new Blob(parts, { type: g.cover.type }));
+      render();
+    } catch {}
+  }
+}
+
+function savedKey() {
+  try { return sessionStorage.getItem("arcade.key") || localStorage.getItem("arcade.key"); } catch { return null; }
+}
+
+function forgetKey() {
+  try { sessionStorage.removeItem("arcade.key"); localStorage.removeItem("arcade.key"); } catch {}
+}
+
+async function initLibrary() {
+  if (!LIBRARY.meta) return;
+  const k = savedKey();
+  if (k) {
+    try {
+      await openLibrary(k);
+      return render();
+    } catch {
+      forgetKey();
+    }
+  }
+  try {
+    const r = await fetch(LIBRARY.meta + "meta.json", { cache: "no-cache" });
+    library.state = r.ok ? "locked" : "none";
+  } catch {
+    library.state = "locked";
+  }
+  render();
+}
+
+$("unlock").onsubmit = async (e) => {
+  e.preventDefault();
+  const msg = $("unlockMsg");
+  $("unlockBtn").disabled = true;
+  msg.className = "";
+  msg.textContent = "checking...";
+  try {
+    const meta = await (await fetchOk([LIBRARY.meta + "meta.json"], { cache: "no-cache" })).json();
+    const base = await crypto.subtle.importKey("raw", new TextEncoder().encode($("pw").value), "PBKDF2", false, ["deriveBits"]);
+    const bits = await crypto.subtle.deriveBits(
+      { name: "PBKDF2", hash: "SHA-256", salt: unhex(meta.salt), iterations: meta.iterations }, base, 256);
+    const keyHex = tohex(bits);
+    try {
+      await openLibrary(keyHex);
+    } catch (err) {
+      if (err && err.name === "OperationError") throw new Error("wrong password");
+      throw err;
+    }
+    try { ($("remember").checked ? localStorage : sessionStorage).setItem("arcade.key", keyHex); } catch {}
+    $("pw").value = "";
+    toast(library.games.length + " games unlocked");
+    render();
+  } catch (err) {
+    msg.className = "err";
+    msg.textContent = err.message === "wrong password" ? "wrong password" : "couldn't load the library (" + (err.message || err) + ")";
+  } finally {
+    $("unlockBtn").disabled = false;
+  }
+};
+
+$("lockBtn").onclick = () => {
+  forgetKey();
+  for (const u of Object.values(library.covers)) URL.revokeObjectURL(u);
+  library = { state: "locked", key: null, games: [], bios: {}, covers: {} };
+  $("unlockMsg").className = "";
+  $("unlockMsg").textContent = "enter the password to load your games";
+  render();
+  toast("locked");
+};
+
+// ---- controls ----
+
+function schemeOf(core) {
+  return core === "mame2003" ? "mame" : core;
+}
+
+// neo geo runs on fbneo in AES mode; EmulatorJS files it under "arcade"
+function ejsCore(core) {
+  return core === "neogeo" ? "arcade" : schemeOf(core);
+}
+
+const NEOGEO_MODES = { UNIBIOS: "UniBIOS (pick AES in its menu)", AES_EUR: "AES Europe / Asia", AES_JAP: "AES Japan" };
+let neogeoMode = store.get("arcade.neogeoMode", "UNIBIOS");
+
+function ejsControls(scheme) {
+  const over = controls.schemes[scheme] || {};
+  const p0 = {};
+  for (const [id, [key, pad]] of Object.entries(DEFAULT_PAD)) {
+    const o = over[id];
+    const value = o && o.key !== undefined ? o.key : key;
+    p0[id] = pad ? { value, value2: pad } : { value };
+  }
+  return { 0: p0, 1: {}, 2: {}, 3: {} };
+}
+
+function mouseBinds(scheme) {
+  const over = controls.schemes[scheme] || {};
+  const out = [];
+  for (const [id, o] of Object.entries(over)) if (o.mouse) out.push([o.mouse, Number(id)]);
+  return out;
+}
+
+function setBinding(scheme, id, patch) {
+  const s = (controls.schemes[scheme] ||= {});
+  const cur = { ...(s[id] || {}), ...patch };
+  if (cur.key === DEFAULT_PAD[id][0]) delete cur.key;
+  if (!cur.mouse) delete cur.mouse;
+  if (Object.keys(cur).length) s[id] = cur; else delete s[id];
+  if (!Object.keys(s).length) delete controls.schemes[scheme];
+  controls.updated = Date.now();
+  store.set("arcade.controls", controls);
+}
+
+let listening = null;
+
+function renderControls() {
+  $("ctlNeogeo").hidden = $("ctlScheme").value !== "neogeo";
+  const scheme = $("ctlScheme").value;
+  const over = controls.schemes[scheme] || {};
+  const body = $("ctlBody");
+  body.textContent = "";
+  for (const [id, label] of buttonsFor(scheme)) {
+    const o = over[id] || {};
+    const key = o.key !== undefined ? o.key : DEFAULT_PAD[id][0];
+    const cap = el("button", { className: "keycap" + (key ? "" : " none"), textContent: key ? KEYMAP[key] : "unbound" });
+    cap.onclick = () => {
+      if (listening) listening.cap.classList.remove("listening");
+      listening = { cap, id, scheme };
+      cap.classList.add("listening");
+      cap.textContent = "press a key";
+    };
+    const sel = el("select");
+    for (const [v, n] of Object.entries(MOUSE)) sel.append(el("option", { value: v, textContent: n }));
+    sel.value = o.mouse || "";
+    sel.onchange = () => {
+      // one mouse input per system, so steal it from any other button
+      for (const [oid, ob] of Object.entries(controls.schemes[scheme] || {})) {
+        if (sel.value && ob.mouse === sel.value && Number(oid) !== id) setBinding(scheme, oid, { mouse: "" });
+      }
+      setBinding(scheme, id, { mouse: sel.value });
+      renderControls();
+    };
+    const tr = el("tr", { className: over[id] ? "changed" : "" },
+      el("td", { textContent: label }), el("td", {}, cap), el("td", {}, sel));
+    body.append(tr);
+  }
+}
+
+window.addEventListener("keydown", (e) => {
+  if (listening) {
+    e.preventDefault();
+    e.stopPropagation();
+    const { id, scheme } = listening;
+    listening = null;
+    if (e.keyCode === 27) return renderControls();
+    if (e.keyCode === 8 || e.keyCode === 46) {
+      setBinding(scheme, id, { key: 0 });
+      return renderControls();
+    }
+    if (!KEYMAP[e.keyCode]) {
+      toast("the emulator can't use that key");
+      return renderControls();
+    }
+    // a key drives one button per system, so unbind it anywhere else first
+    for (const [bid] of buttonsFor(scheme)) {
+      if (bid === id) continue;
+      const o = controls.schemes[scheme]?.[bid];
+      const cur = o && o.key !== undefined ? o.key : DEFAULT_PAD[bid][0];
+      if (cur === e.keyCode) setBinding(scheme, bid, { key: 0 });
+    }
+    setBinding(scheme, id, { key: e.keyCode });
+    renderControls();
+    return;
+  }
+  if (e.key === "/" && document.activeElement !== $("search") && !document.querySelector("dialog[open]")) {
+    e.preventDefault();
+    $("search").focus();
+  }
+}, true);
+
+$("ctlScheme").onchange = () => { listening = null; renderControls(); };
+for (const [k, v] of Object.entries(NEOGEO_MODES)) $("ctlNeogeo").append(el("option", { value: k, textContent: v }));
+$("ctlNeogeo").value = neogeoMode;
+$("ctlNeogeo").onchange = () => {
+  neogeoMode = $("ctlNeogeo").value;
+  store.set("arcade.neogeoMode", neogeoMode);
+};
+$("ctlReset").onclick = () => {
+  delete controls.schemes[$("ctlScheme").value];
+  controls.updated = Date.now();
+  store.set("arcade.controls", controls);
+  renderControls();
+  toast("reset to defaults");
+};
+$("openControls").onclick = () => { renderControls(); $("ctlDlg").showModal(); };
+$("ctlClose").onclick = () => { listening = null; $("ctlDlg").close(); };
+$("ctlDlg").addEventListener("cancel", (e) => { if (listening) e.preventDefault(); });
+
+// ---- launching ----
+
+function partUrls(url, min, max) {
+  const width = String(max).length;
+  const out = [];
+  for (let i = min; i <= max; i++) out.push(url + ".part" + String(i).padStart(width, "0"));
+  return out;
+}
+
+function baseName(url) {
+  try { return decodeURIComponent(new URL(url).pathname.split("/").pop()) || "game"; } catch { return "game"; }
+}
+
+function encSource(f) {
+  return { kind: "enc", bases: LIBRARY.data, id: f.id, parts: f.parts, name: f.name, key: library.key };
+}
+
+function gameSource(g) {
+  if (g.lib) return encSource(g.lib.file);
+  if (g.local) return { kind: "url", url: g.local, name: g.fileName };
+  if (g.parts) return { kind: "parts", urls: partUrls(g.url, g.parts[0], g.parts[1]), name: baseName(g.url) };
+  return { kind: "url", url: g.url, name: baseName(g.url) };
+}
+
+function biosSource(g) {
+  if (g.bios) return { kind: "url", url: g.bios, name: baseName(g.bios) };
+  const b = library.bios[g.core];
+  return b && library.key ? encSource(b) : null;
+}
+
+// Runs inside the launched page so download progress shows there.
+function playerPage(game) {
+  const scheme = schemeOf(game.core);
+  const cfg = {
+    name: game.name,
+    core: ejsCore(game.core),
+    scheme,
+    // fbneo wants neogeo.zip next to the game as a zip, not unpacked like a normal bios
+    biosAsFile: game.core === "neogeo",
+    options: game.core === "neogeo" ? { "fbneo-neogeo-mode": neogeoMode } : null,
+    game: gameSource(game),
+    bios: biosSource(game),
+    data: EJS_DATA,
+    controls: ejsControls(scheme),
+    mouse: mouseBinds(scheme),
+    updated: controls.updated,
+    stateKey: gameKey(game),
+  };
+  const json = JSON.stringify(cfg).replace(/</g, "\\u003c");
+  const title = game.name.replace(/[<&]/g, (c) => (c === "<" ? "&lt;" : "&amp;"));
+  return `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>${title}</title>
+<style>
+html,body{margin:0;width:100%;height:100%;background:#0b0c10;color:#8b92a6;font:15px system-ui,sans-serif;overflow:hidden}
+#game{width:100%;height:100%}
+#status{position:fixed;inset:0;display:flex;flex-direction:column;gap:14px;align-items:center;justify-content:center;pointer-events:none}
+#status b{color:#eceef4;font-size:20px}
+#bar{width:220px;height:4px;border-radius:4px;background:#262b38;overflow:hidden}
+#bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#7c5cff,#22d3ee);transition:width .2s}
+#states{position:fixed;inset:0;z-index:99999;display:none;align-items:center;justify-content:center;background:rgba(5,6,9,.82);backdrop-filter:blur(6px);color:#eceef4;font:14px system-ui,sans-serif}
+#states.on{display:flex}
+#states .box{width:min(640px,92vw);max-height:82vh;display:flex;flex-direction:column;background:#111319;border:1px solid #262b38;border-radius:16px;overflow:hidden}
+#states .head{display:flex;align-items:center;gap:8px;padding:14px 16px;border-bottom:1px solid #262b38}
+#states .head b{flex:1;font-size:16px}
+#states button{background:#161922;color:#eceef4;border:1px solid #262b38;border-radius:8px;padding:7px 12px;cursor:pointer;font:inherit}
+#states button:hover{border-color:#7c5cff}
+#states .list{overflow:auto;padding:12px;display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px}
+#states .st{position:relative;overflow:hidden;border-radius:10px;background:#161922;border:1px solid #262b38;cursor:pointer}
+#states .st:hover{border-color:#7c5cff}
+#states .st img,#states .st i{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;background:#0b0c10;image-rendering:pixelated}
+#states .st span{display:block;padding:7px 9px;font-size:12px;color:#8b92a6}
+#states .st .x{position:absolute;top:6px;right:6px;padding:1px 8px;background:rgba(0,0,0,.6)}
+#states .st .x:hover{background:#ff5d73}
+#states .none{grid-column:1/-1;padding:28px;text-align:center;color:#8b92a6}
+</style></head>
+<body><div id="game"></div>
+<div id="status"><b>${title}</b><div id="bar"><i></i></div><span id="msg">loading</span></div>
+<div id="states"><div class="box"><div class="head"><b>load state</b><button id="stFile">from file</button><button id="stClose">close</button></div><div class="list" id="stList"></div></div></div>
+<script>
+${STATES_SRC}
+<\/script>
+<script>
+(async () => {
+  const cfg = ${json};
+  const msg = document.getElementById("msg");
+  const bar = document.querySelector("#bar i");
+
+
+  const hex = (h) => new Uint8Array(h.match(/../g).map((b) => parseInt(b, 16)));
+  let done = 0, total = 0;
+  const tick = () => { bar.style.width = (total ? done / total * 100 : 0) + "%"; };
+
+  async function get(urls) {
+    let last;
+    for (const u of urls) {
+      try {
+        const r = await fetch(u);
+        if (r.ok) return await r.arrayBuffer();
+        last = new Error(r.status + " on " + u.split("/").slice(-2).join("/"));
+      } catch (e) { last = e; }
+    }
+    throw last;
+  }
+
+  async function load(src, label) {
+    if (src.kind === "url") {
+      msg.textContent = label;
+      return [await get([src.url])];
+    }
+    if (src.kind === "parts") {
+      const out = [];
+      for (let i = 0; i < src.urls.length; i++) {
+        msg.textContent = label + " (" + (i + 1) + "/" + src.urls.length + ")";
+        out.push(await get([src.urls[i]]));
+        done++; tick();
+      }
+      return out;
+    }
+    const key = await crypto.subtle.importKey("raw", hex(src.key), "AES-GCM", false, ["decrypt"]);
+    const out = [];
+    for (let i = 0; i < src.parts; i++) {
+      msg.textContent = label + (src.parts > 1 ? " (" + (i + 1) + "/" + src.parts + ")" : "");
+      const blob = new Uint8Array(await get(src.bases.map((b) => b + "d/" + src.id + "/" + i)));
+      out.push(await crypto.subtle.decrypt(
+        { name: "AES-GCM", iv: blob.subarray(0, 12), additionalData: new TextEncoder().encode(src.id + "/" + i) },
+        key, blob.subarray(12)));
+      done++; tick();
+    }
+    return out;
+  }
+
+  let game, bios;
+  try {
+    total = [cfg.game, cfg.bios].reduce((n, s) => n + (!s ? 0 : s.kind === "enc" ? s.parts : s.kind === "parts" ? s.urls.length : 0), 0);
+    tick();
+    if (cfg.bios && cfg.biosAsFile) {
+      // EmulatorJS writes a raw ArrayBuffer as an empty file, so hand it bytes
+      bios = new Uint8Array(await new Blob(await load(cfg.bios, "loading bios")).arrayBuffer());
+    } else if (cfg.bios) {
+      bios = cfg.bios.kind === "url" ? cfg.bios.url : URL.createObjectURL(new Blob(await load(cfg.bios, "loading bios")));
+    }
+    // a named File lets EmulatorJS pick the loader from the extension
+    game = new File(await load(cfg.game, "loading game"), cfg.game.name);
+  } catch (e) {
+    msg.textContent = "failed to load: " + (e && e.message || e);
+    return;
+  }
+  document.getElementById("status").remove();
+
+  // AES modes need their bios file inside neogeo.zip; fall back to UniBIOS when it's missing
+  if (cfg.biosAsFile && bios && cfg.options) {
+    const has = (name) => {
+      const n = new TextEncoder().encode(name);
+      outer: for (let i = 0; i <= bios.length - n.length; i++) {
+        for (let j = 0; j < n.length; j++) if (bios[i + j] !== n[j]) continue outer;
+        return true;
+      }
+      return false;
+    };
+    const need = { AES_EUR: "neo-epo.bin", AES_JAP: "neo-po.bin" }[cfg.options["fbneo-neogeo-mode"]];
+    if (need && !has(need) && has("uni-bios_4_0.rom")) cfg.options["fbneo-neogeo-mode"] = "UNIBIOS";
+  }
+
+  // EmulatorJS keeps its own per-game control copy in localStorage and
+  // prefers it over defaults, so push ours in when they changed.
+  try {
+    const key = "ejs-1-" + cfg.core + "-" + cfg.name + "-settings";
+    const mark = "arcade.applied." + key;
+    let stored = JSON.parse(localStorage.getItem(key) || "null");
+    // core options only reach the core at boot through this saved entry
+    if (!stored && cfg.options) stored = { controlSettings: cfg.controls, settings: {}, cheats: [] };
+    if (stored) {
+      if (Number(localStorage.getItem(mark) || 0) < cfg.updated) stored.controlSettings = cfg.controls;
+      if (cfg.options) stored.settings = Object.assign(stored.settings || {}, cfg.options);
+      localStorage.setItem(key, JSON.stringify(stored));
+    }
+    localStorage.setItem(mark, String(cfg.updated));
+  } catch (e) {}
+
+  window.EJS_player = "#game";
+  window.EJS_core = cfg.core;
+  window.EJS_gameName = cfg.name;
+  window.EJS_gameUrl = game;
+  window.EJS_pathtodata = cfg.data;
+  window.EJS_color = "#7c5cff";
+  window.EJS_startOnLoaded = true;
+  window.EJS_defaultControls = cfg.controls;
+  if (bios && cfg.biosAsFile) window.EJS_externalFiles = { ["/" + (cfg.bios.name || "neogeo.zip")]: bios };
+  else if (bios) window.EJS_biosUrl = bios;
+  if (cfg.options) window.EJS_defaultOptions = cfg.options;
+
+  // save/load state buttons go to arcade's own store instead of downloads
+  const panel = document.getElementById("states");
+  const list = document.getElementById("stList");
+  let resume = false, shots = [];
+
+  window.EJS_onSaveState = async (e) => {
+    const emu = window.EJS_emulator;
+    let shot = null;
+    try {
+      const png = await Promise.race([emu.gameManager.screenshot(), new Promise((ok) => setTimeout(() => ok(null), 1500))]);
+      if (png) shot = new Blob([png], { type: "image/png" });
+    } catch (err) {}
+    try {
+      await putState({ game: cfg.stateKey, name: cfg.name, core: cfg.core, time: Date.now(), data: new Blob([e.state]), shot });
+      emu.displayMessage("STATE SAVED");
+    } catch (err) {
+      emu.displayMessage("COULDN'T SAVE STATE");
+    }
+  };
+
+  function hideStates() {
+    panel.classList.remove("on");
+    shots.forEach(URL.revokeObjectURL);
+    shots = [];
+    if (resume) window.EJS_emulator.play();
+  }
+
+  function applyState(bytes) {
+    hideStates();
+    window.EJS_emulator.gameManager.loadState(bytes);
+    window.EJS_emulator.displayMessage("STATE LOADED");
+  }
+
+  async function drawStates() {
+    shots.forEach(URL.revokeObjectURL);
+    shots = [];
+    list.textContent = "";
+    const states = await statesFor(cfg.stateKey);
+    if (!states.length) {
+      list.innerHTML = '<div class="none">no states yet. use the save state button first.</div>';
+      return;
+    }
+    for (const st of states) {
+      const b = document.createElement("div");
+      b.className = "st";
+      if (st.shot) {
+        const img = document.createElement("img");
+        img.src = URL.createObjectURL(st.shot);
+        shots.push(img.src);
+        b.append(img);
+      } else {
+        b.append(document.createElement("i"));
+      }
+      const when = document.createElement("span");
+      when.textContent = new Date(st.time).toLocaleString();
+      const x = document.createElement("button");
+      x.className = "x";
+      x.textContent = "\u00d7";
+      x.title = "delete";
+      x.onclick = async (e) => {
+        e.stopPropagation();
+        await deleteState(st.id);
+        drawStates();
+      };
+      b.append(when, x);
+      b.onclick = async () => applyState(new Uint8Array(await st.data.arrayBuffer()));
+      list.append(b);
+    }
+  }
+
+  window.EJS_onLoadState = async () => {
+    const emu = window.EJS_emulator;
+    resume = !emu.paused;
+    emu.pause();
+    await drawStates();
+    panel.classList.add("on");
+  };
+
+  document.getElementById("stClose").onclick = hideStates;
+  panel.onclick = (e) => { if (e.target === panel) hideStates(); };
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && panel.classList.contains("on")) { e.stopPropagation(); hideStates(); }
+  }, true);
+  document.getElementById("stFile").onclick = () => {
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = ".state";
+    input.onchange = async () => {
+      const f = input.files[0];
+      if (!f) return;
+      const bytes = new Uint8Array(await f.arrayBuffer());
+      try { await putState({ game: cfg.stateKey, name: cfg.name, core: cfg.core, time: Date.now(), data: new Blob([bytes]), shot: null }); } catch (err) {}
+      applyState(bytes);
+    };
+    input.click();
+  };
+
+  if (cfg.mouse.length) {
+    const binds = new Map(cfg.mouse);
+    const analog = (id) => id >= 16 && id <= 23;
+    const send = (id, down) => {
+      const emu = window.EJS_emulator;
+      if (!emu || !emu.started || !emu.gameManager) return;
+      emu.gameManager.simulateInput(0, id, down ? (analog(id) ? 0x7fff : 1) : 0);
+    };
+    const onGame = (e) => e.target && e.target.tagName === "CANVAS";
+    const btn = (e, down) => {
+      const id = binds.get("m" + e.button);
+      if (id === undefined || !onGame(e)) return;
+      e.preventDefault();
+      send(id, down);
+    };
+    document.addEventListener("mousedown", (e) => btn(e, true));
+    document.addEventListener("mouseup", (e) => btn(e, false));
+    document.addEventListener("contextmenu", (e) => { if (binds.has("m2") && onGame(e)) e.preventDefault(); });
+    document.addEventListener("wheel", (e) => {
+      const id = binds.get(e.deltaY < 0 ? "wu" : "wd");
+      if (id === undefined || !onGame(e)) return;
+      e.preventDefault();
+      send(id, true);
+      setTimeout(() => send(id, false), 80);
+    }, { passive: false });
+  }
+
+  const s = document.createElement("script");
+  s.src = cfg.data + "loader.js";
+  document.body.appendChild(s);
+})();
+<\/script></body></html>`;
+}
+
+function launch(game) {
+  const html = playerPage(game);
+  if ($("blank").checked) {
+    const w = window.open("about:blank", "_blank");
+    if (w) {
+      // document.write would stamp this page's url onto the tab, so build it
+      // with dom calls and keep the player in a srcdoc frame instead
+      const d = w.document;
+      d.title = game.name;
+      d.documentElement.style.cssText = "height:100%;background:#000";
+      d.body.style.cssText = "margin:0;height:100%;overflow:hidden";
+      const f = d.createElement("iframe");
+      f.allow = "autoplay; fullscreen; gamepad";
+      f.allowFullscreen = true;
+      f.style.cssText = "display:block;border:0;width:100%;height:100%";
+      f.srcdoc = html;
+      d.body.append(f);
+      f.onload = () => f.focus();
+      return;
+    }
+    toast("popup blocked, playing here instead");
+  }
+  $("frame").srcdoc = html;
+  $("overlay").style.display = "block";
+}
+
+$("closeOverlay").onclick = () => {
+  $("frame").srcdoc = "";
+  $("overlay").style.display = "none";
+};
+
+$("blank").checked = store.get("arcade.blank", true);
+$("blank").onchange = () => store.set("arcade.blank", $("blank").checked);
+
+// ---- dialogs ----
+
+function fillSystems(sel) {
+  for (const [k, v] of Object.entries(SYSTEMS)) sel.append(el("option", { value: k, textContent: v.name }));
+}
+fillSystems($("addCore"));
+fillSystems($("localCore"));
+for (const [k, v] of Object.entries(SYSTEMS)) {
+  if (k !== "dos") $("ctlScheme").append(el("option", { value: k, textContent: v.name }));
+}
+
+function guessCore(name) {
+  return EXT_CORE[name.split(/[?#]/)[0].split(".").pop().toLowerCase()];
+}
+
+$("openAdd").onclick = () => { $("addDlg").returnValue = ""; $("addDlg").querySelector("form").reset(); $("addDlg").showModal(); $("addName").focus(); };
+$("addUrl").oninput = () => {
+  const c = guessCore($("addUrl").value);
+  if (c) $("addCore").value = c;
+};
+$("addDlg").addEventListener("close", () => {
+  if ($("addDlg").returnValue !== "save") return;
+  const g = { name: $("addName").value.trim(), core: $("addCore").value, url: $("addUrl").value.trim() };
+  if (!g.name || !g.url) return;
+  const m = $("addParts").value.match(/^\s*(\d+)\s*-\s*(\d+)\s*$/);
+  if (m) g.parts = [Number(m[1]), Number(m[2])];
+  if ($("addBios").value.trim()) g.bios = $("addBios").value.trim();
+  if ($("addImg").value.trim()) g.img = $("addImg").value.trim();
+  saved.push(g);
+  store.set("arcade.games", saved);
+  render();
+  toast("added " + g.name);
+});
+
+let localPick = null;
+function pickLocal(f) {
+  if (!f) return;
+  localPick = f;
+  $("localName").value = f.name;
+  const c = guessCore(f.name);
+  if (c) $("localCore").value = c;
+}
+$("openLocal").onclick = () => { $("localDlg").returnValue = ""; $("localDlg").showModal(); };
+$("drop").onclick = () => $("localFile").click();
+$("localFile").onchange = () => pickLocal($("localFile").files[0]);
+$("drop").ondragover = (e) => { e.preventDefault(); $("drop").classList.add("over"); };
+$("drop").ondragleave = () => $("drop").classList.remove("over");
+$("drop").ondrop = (e) => {
+  e.preventDefault();
+  $("drop").classList.remove("over");
+  pickLocal(e.dataTransfer.files[0]);
+};
+$("localDlg").addEventListener("close", () => {
+  if ($("localDlg").returnValue !== "play" || !localPick) return;
+  // blob urls resolve in the about:blank tab because it shares this page's origin
+  launch({ name: localPick.name.replace(/\.[^.]+$/, ""), core: $("localCore").value, local: URL.createObjectURL(localPick), fileName: localPick.name });
+});
+
+$("search").oninput = render;
+render();
+initLibrary();
+</script>
+</body>
+</html>
