@@ -90,6 +90,9 @@
   .toggle input:checked + i { background: var(--accent); }
   .toggle input:checked + i::after { transform: translateX(14px); }
 
+  .seg { display: inline-flex; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 3px; }
+  .seg button { border: 0; background: none; color: var(--dim); padding: 6px 11px; border-radius: 7px; font-size: 13px; }
+  .seg button.on { background: var(--card2); color: var(--text); }
   .chips { display: flex; gap: 6px; flex-wrap: wrap; max-width: 1200px; margin: 12px auto 0; }
   .chip {
     border: 1px solid var(--line); background: none; border-radius: 99px;
@@ -106,7 +109,9 @@
     font: 700 13px var(--mono); color: var(--dim); letter-spacing: .1em;
     margin: 32px 0 12px; scroll-margin-top: 140px;
   }
-  section h2::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+  section h2::after { content: ""; flex: 1; height: 1px; background: var(--line); order: 3; }
+  section h2 .count { color: var(--faint); font-weight: 400; order: 2; }
+  #rail.consoles button { font-size: 10px; width: 44px; letter-spacing: -.02em; }
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; }
 
   .card {
@@ -116,10 +121,11 @@
   }
   .card:hover { transform: translateY(-3px); border-color: var(--faint); box-shadow: 0 12px 30px rgba(0,0,0,.4); }
   .cover {
-    aspect-ratio: 4 / 3; display: grid; place-items: center; position: relative;
+    aspect-ratio: 3 / 4; display: grid; place-items: center; position: relative;
     background: linear-gradient(135deg, var(--c1), var(--c2)); overflow: hidden;
   }
-  .cover img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .cover img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+  .cover img.bg { object-fit: cover; filter: blur(18px) brightness(.55); transform: scale(1.2); }
   .cover .mono { font: 700 44px var(--sans); color: rgba(255,255,255,.9); text-shadow: 0 4px 20px rgba(0,0,0,.35); letter-spacing: -.03em; }
   .cover .play {
     position: absolute; inset: 0; display: grid; place-items: center;
@@ -256,6 +262,9 @@
       <input id="search" type="text" placeholder="search games" autocomplete="off" spellcheck="false">
       <kbd>/</kbd>
     </label>
+    <div class="seg" id="groupBy" title="group games">
+      <button data-g="console">console</button><button data-g="letter">a-z</button>
+    </div>
     <label class="toggle" title="open games in an about:blank tab"><input type="checkbox" id="blank" checked><i></i>about:blank</label>
     <button class="btn" id="openControls">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></svg>
@@ -529,7 +538,23 @@ function allGames() {
     ...library.games.map((e) => ({ name: e.name, core: e.core, lib: e, img: e.cover && library.covers[e.cover.id], custom: -1 })),
     ...GAMES.map((g) => ({ ...g, custom: -1 })),
     ...saved.map((g, i) => ({ ...g, custom: i })),
-  ].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: "base" }));
+  ].sort((a, b) => displayName(a.name).localeCompare(displayName(b.name), undefined, { sensitivity: "base" }));
+}
+
+const SHORT = {
+  nes: "NES", snes: "SNES", n64: "N64", gb: "GB", gba: "GBA", nds: "NDS", vb: "VB", psx: "PS1", psp: "PSP",
+  segaMD: "MD", segaMS: "SMS", segaGG: "GG", segaCD: "SCD", sega32x: "32X", segaSaturn: "SAT",
+  atari2600: "2600", atari7800: "7800", lynx: "LYNX", jaguar: "JAG", pce: "PCE", pcecd: "PCCD", pcfx: "PCFX",
+  ngp: "NGP", ws: "WS", coleco: "CV", "3do": "3DO", arcade: "ARC", mame: "MAME", neogeo: "NEO", dos: "DOS",
+};
+
+let groupBy = store.get("arcade.groupBy", "console");
+
+// "Legend of Zelda, The (USA) (Rev 1)" -> "The Legend of Zelda"
+function displayName(name) {
+  const t = name.replace(/\s*[([][^)\]]*[)\]]/g, "").trim();
+  const m = t.match(/^(.*?), (The|A|An)( - .*)?$/);
+  return m ? `${m[2]} ${m[1]}${m[3] || ""}` : t || name;
 }
 
 function letterOf(name) {
@@ -556,18 +581,19 @@ function card(g) {
   const cover = el("div", { className: "cover" });
   cover.style.setProperty("--c1", sys.colors[0]);
   cover.style.setProperty("--c2", sys.colors[1]);
-  cover.append(el("span", { className: "mono", textContent: initials(g.name) }));
+  cover.append(el("span", { className: "mono", textContent: initials(displayName(g.name)) }));
   if (g.img) {
+    const bg = el("img", { src: g.img, alt: "", className: "bg", loading: "lazy" });
     const img = el("img", { src: g.img, alt: "", loading: "lazy" });
-    img.onerror = () => img.remove();
-    cover.append(img);
+    img.onerror = () => { img.remove(); bg.remove(); };
+    cover.append(bg, img);
   }
   cover.append(el("div", { className: "play", innerHTML: PLAY_ICON }));
 
   const c = el("button", { className: "card", title: g.name },
     cover,
     el("div", { className: "meta" },
-      el("div", { className: "name", textContent: g.name }),
+      el("div", { className: "name", textContent: displayName(g.name) }),
       el("div", { className: "sys", textContent: sys.name })));
   c.onclick = () => launch(g);
   if (heavyChd(g)) {
@@ -619,9 +645,16 @@ function render() {
   const games = everything.filter((g) =>
     (filter === "all" || g.core === filter) && g.name.toLowerCase().includes(q));
 
+  // sections are either consoles (in SYSTEMS order) or letters
+  const byConsole = groupBy === "console";
+  const keyOf = (g) => byConsole ? g.core : letterOf(displayName(g.name));
   const groups = {};
-  for (const g of games) (groups[letterOf(g.name)] ||= []).push(g);
-  const letters = ["#", ..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"];
+  for (const g of games) (groups[keyOf(g)] ||= []).push(g);
+  const order = byConsole
+    ? [...Object.keys(SYSTEMS), ...Object.keys(groups).filter((k) => !SYSTEMS[k])]
+    : ["#", ..."ABCDEFGHIJKLMNOPQRSTUVWXYZ"];
+  const heading = (k) => byConsole ? (SYSTEMS[k] ? SYSTEMS[k].name : k) : k;
+  for (const b of $("groupBy").children) b.classList.toggle("on", b.dataset.g === groupBy);
 
   $("unlock").hidden = library.state !== "locked";
   $("lockBtn").hidden = library.state !== "open";
@@ -644,20 +677,31 @@ function render() {
   } else if (!games.length) {
     list.append(el("div", { className: "empty" }, el("h3", { textContent: "nothing matches" })));
   }
-  for (const l of letters) {
-    if (!groups[l]) continue;
-    list.append(el("section", { id: "sec-" + l },
-      el("h2", { textContent: l }),
-      el("div", { className: "grid" }, ...groups[l].map(card))));
+  for (const k of order) {
+    if (!groups[k]) continue;
+    const h = el("h2", { textContent: heading(k) });
+    if (byConsole) h.append(el("span", { className: "count", textContent: groups[k].length }));
+    list.append(el("section", { id: "sec-" + k }, h, el("div", { className: "grid" }, ...groups[k].map(card))));
   }
 
+  // letters list every slot (dimmed when empty); consoles only list what you have
   const rail = $("rail");
   rail.textContent = "";
-  for (const l of letters) {
-    const b = el("button", { textContent: l, disabled: !groups[l] });
-    b.onclick = () => $("sec-" + l).scrollIntoView();
+  rail.classList.toggle("consoles", byConsole);
+  for (const k of order) {
+    if (byConsole && !groups[k]) continue;
+    const b = el("button", { textContent: byConsole ? (SHORT[k] || k) : k, disabled: !groups[k], title: heading(k) });
+    b.onclick = () => $("sec-" + k).scrollIntoView();
     rail.append(b);
   }
+}
+
+for (const b of $("groupBy").children) {
+  b.onclick = () => {
+    groupBy = b.dataset.g;
+    store.set("arcade.groupBy", groupBy);
+    render();
+  };
 }
 
 function statesDb() {
@@ -808,18 +852,24 @@ async function openLibrary(keyHex) {
 }
 
 async function loadCovers(key) {
-  for (const g of library.games) {
-    if (!g.cover || library.state !== "open") continue;
-    try {
-      const parts = [];
-      for (let i = 0; i < g.cover.parts; i++) {
-        const r = await fetchOk(LIBRARY.data.map((b) => b + "d/" + g.cover.id + "/" + i));
-        parts.push(await unseal(await r.arrayBuffer(), key, g.cover.id + "/" + i));
-      }
-      library.covers[g.cover.id] = URL.createObjectURL(new Blob(parts, { type: g.cover.type }));
-      render();
-    } catch {}
-  }
+  const queue = library.games.filter((g) => g.cover);
+  let pending = null;
+  const redraw = () => { pending ||= requestAnimationFrame(() => { pending = null; render(); }); };
+  // six at a time, one redraw per frame however many land together
+  const worker = async () => {
+    for (let g; (g = queue.shift()) && library.state === "open";) {
+      try {
+        const parts = [];
+        for (let i = 0; i < g.cover.parts; i++) {
+          const r = await fetchOk(LIBRARY.data.map((b) => b + "d/" + g.cover.id + "/" + i));
+          parts.push(await unseal(await r.arrayBuffer(), key, g.cover.id + "/" + i));
+        }
+        library.covers[g.cover.id] = URL.createObjectURL(new Blob(parts, { type: g.cover.type }));
+        redraw();
+      } catch {}
+    }
+  };
+  await Promise.all(Array.from({ length: 6 }, worker));
 }
 
 function savedKey() {
@@ -1158,10 +1208,11 @@ function playerPage(game) {
     updated: controls.updated,
     stateKey: gameKey(game),
     facts: factsFor(game),
+    title: displayName(game.name),
     system: (SYSTEMS[game.core] || { name: game.core }).name,
   };
   const json = JSON.stringify(cfg).replace(/</g, "\\u003c");
-  const title = game.name.replace(/[<&]/g, (c) => (c === "<" ? "&lt;" : "&amp;"));
+  const title = displayName(game.name).replace(/[<&]/g, (c) => (c === "<" ? "&lt;" : "&amp;"));
   return `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>${title}</title>
 <style>
@@ -1215,7 +1266,7 @@ ${STATES_SRC}
   const cfg = ${json};
   const $b = (id) => document.getElementById(id);
   const boot = $b("boot"), logEl = $b("log"), live = $b("live");
-  $b("cmd").textContent = "boot " + JSON.stringify(cfg.name) + " --" + cfg.system.toLowerCase().replace(/[^a-z0-9]+/g, "-");
+  $b("cmd").textContent = "boot " + JSON.stringify(cfg.title) + " --" + cfg.system.toLowerCase().replace(/[^a-z0-9]+/g, "-");
 
   function row(text) {
     const ln = document.createElement("div");
@@ -1571,6 +1622,13 @@ ${STATES_SRC}
 <\/script></body></html>`;
 }
 
+// browsers show their own "leave this page?" prompt; the text can't be customised
+function confirmLeave(e) {
+  e.preventDefault();
+  e.returnValue = "";
+}
+window.addEventListener("beforeunload", confirmLeave);
+
 function launch(game) {
   if (heavyChd(game)) toast("chd ps1 games run on a heavier core and may stutter; bin/cue is recommended");
   const html = playerPage(game);
@@ -1580,7 +1638,8 @@ function launch(game) {
       // document.write would stamp this page's url onto the tab, so build it
       // with dom calls and keep the player in a srcdoc frame instead
       const d = w.document;
-      d.title = game.name;
+      d.title = displayName(game.name);
+      w.addEventListener("beforeunload", confirmLeave);
       d.documentElement.style.cssText = "height:100%;background:#000";
       d.body.style.cssText = "margin:0;height:100%;overflow:hidden";
       const f = d.createElement("iframe");

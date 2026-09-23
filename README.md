@@ -22,10 +22,16 @@ a `<Game>.name` file next to a rom sets the title shown in the launcher, for arc
 
 pc engine cd games go in `roms/pcecd/` with the system card in `roms/bios/pcecd/syscard3.pce`.
 
-build the packer once, then run it:
+## covers
+
+`./covers` finds box art for every game in `roms/` that doesn't have a cover yet. it pulls the free launchbox games database (no key or account needed, cached in `~/.cache/arcade` and only re-downloaded when launchbox publishes a new one), matches each rom by title, platform and region, and saves a 512 px jpeg next to the rom. `./covers -f` replaces existing ones. anything it can't match keeps the coloured initials card, or you can drop in a `<Game>.jpg` yourself.
+
+## packing
+
+build the tools once, then run the packer:
 
 ```
-nix-shell -p openssl pkg-config gnumake --run make
+nix-shell -p openssl curl zlib pkg-config gnumake --run make
 ./pack
 ```
 
@@ -35,7 +41,7 @@ the password can't be recovered. if it's lost, delete `lib/` and pack again with
 
 ## neo geo
 
-neo geo games run on fbneo in AES (home console) mode. games go in `roms/neogeo/` under their fbneo romset names (`mslug.zip`, not `Metal Slug.zip`), and the bios goes in `roms/bios/neogeo/neogeo.zip`, kept as a zip. `.neo` files (the neosd format) don't load in fbneo, so the packer skips them.
+neo geo games run on fbneo in AES (home console) mode. games go in `roms/neogeo/` under their fbneo romset names (`mslug.zip`, not `Metal Slug.zip`), and the bios goes in `roms/bios/neogeo/neogeo.zip`, kept as a zip. `.neo` files (the neosd format) don't load in fbneo, and zipping one doesn't change that, so the packer skips them. fbneo needs the real romset (`garou.zip`, `kof2002.zip`), and a merged `.7z` set has everything.
 
 the bios mode is picked in controls with neo geo selected. AES Europe/Asia needs `neo-epo.bin` inside neogeo.zip and AES Japan needs `neo-po.bin`. if the one picked is missing, the game falls back to UniBIOS 4.0 (`uni-bios_4_0.rom`), which can be switched to AES mode from its own menu (hold A+B+C while it boots).
 
