@@ -150,7 +150,7 @@
   section h2::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, var(--line2), transparent); order: 3; align-self: center; }
   section h2 .count { color: var(--dim); font-weight: 500; font-size: 14px; order: 2; }
   section.pinned h2 { color: var(--stamp); text-shadow: 0 0 18px rgba(255, 79, 163, .45); }
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(176px, 1fr)); gap: 18px; perspective: 900px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(176px, 1fr)); gap: 18px; align-items: start; perspective: 900px; }
 
   /* flyers: tilt toward the cursor and catch a glare */
   .card {
@@ -172,8 +172,9 @@
     aspect-ratio: 3 / 4; display: grid; place-items: center; position: relative;
     background: linear-gradient(150deg, var(--c1), var(--c2)); overflow: hidden;
   }
-  .cover img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
-  .cover img.bg { object-fit: cover; filter: blur(18px) brightness(.45) saturate(1.3); transform: scale(1.2); }
+  .cover img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  .cover.art { background: none; }
+  .cover.art .mono { display: none; }
   .cover .mono { font: 400 46px var(--neon); color: #fff; text-shadow: 0 0 14px rgba(255, 255, 255, .5); }
   .meta { padding: 10px 12px 12px; }
   .meta .name { font-weight: 700; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -203,8 +204,9 @@
   }
   #details.open { transform: none; }
   #details .dx { position: absolute; top: 12px; right: 12px; z-index: 2; }
-  #details .dcover { position: relative; aspect-ratio: 3 / 4; max-height: 52vh; margin: 18px 18px 0; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--line); }
-  #details .dcover .cover { aspect-ratio: auto; height: 100%; }
+  #details .dcover { position: relative; margin: 18px 18px 0; display: flex; justify-content: center; }
+  #details .dcover img.full { display: block; max-width: 100%; max-height: 52vh; width: auto; height: auto; border-radius: var(--radius); border: 1px solid var(--line); box-shadow: 0 0 40px rgba(182, 156, 255, .15); }
+  #details .dcover .cover { width: 100%; max-height: 52vh; border-radius: var(--radius); border: 1px solid var(--line); }
   #details .dbody2 { padding: 18px 22px 26px; display: flex; flex-direction: column; gap: 14px; }
   #details h3 { margin: 0; font: 800 26px/1.15 var(--sans); letter-spacing: -.015em; }
   #details .dsys { color: var(--dim); font-size: 14px; margin-top: -8px; }
@@ -713,10 +715,17 @@ function card(g) {
   cover.style.setProperty("--c2", sys.colors[1]);
   cover.append(el("span", { className: "mono", textContent: initials(displayName(g.name)) }));
   if (g.img) {
-    const bg = el("img", { src: g.img, alt: "", className: "bg", loading: "lazy" });
     const img = el("img", { src: g.img, alt: "", loading: "lazy" });
-    img.onerror = () => { img.remove(); bg.remove(); };
-    cover.append(bg, img);
+    // the box takes the cover's own shape once it's known, so there's no filler around it
+    const fit = () => {
+      if (!img.naturalWidth) return;
+      cover.style.aspectRatio = img.naturalWidth + " / " + img.naturalHeight;
+      cover.classList.add("art");
+    };
+    img.onload = fit;
+    img.onerror = () => img.remove();
+    cover.append(img);
+    if (img.complete) fit();
   }
   const c = el("button", { className: "card", title: g.name },
     cover,
@@ -953,8 +962,11 @@ function openDetails(g, fromCard) {
   detailsGame = g;
   detailsFrom = fromCard || null;
   const sys = SYSTEMS[g.core] || { name: g.core, colors: ["#334155", "#0f172a"] };
-  const cover = card(g).querySelector(".cover");
-  $("dCover").replaceChildren(cover, el("div", { className: "glare" }));
+  if (g.img) {
+    $("dCover").replaceChildren(el("img", { src: g.img, alt: "", className: "full" }));
+  } else {
+    $("dCover").replaceChildren(card(g).querySelector(".cover"));
+  }
   $("dTitle").textContent = displayName(g.name);
   $("dSys").textContent = sys.name;
   const facts = factsFor(g);
