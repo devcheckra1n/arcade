@@ -458,10 +458,13 @@ const GAMES = [
   // { name: "Big Disc", core: "psx", url: "https://cdn.jsdelivr.net/gh/you/roms@main/psx/big.iso", parts: [1, 4], bios: "https://..." },
 ];
 
-// EmulatorJS and every core come from npm through jsdelivr, so nothing needs
-// cdn.emulatorjs.org (which school filters tend to block)
+// EmulatorJS is served from a copy in this repo (rt/), the same way the game
+// data is. filters block "emulatorjs" addresses; the npm copy is only a fallback
 const EJS_VERSION = "4.2.3";
-const EJS_DATA = `https://cdn.jsdelivr.net/npm/@emulatorjs/emulatorjs@${EJS_VERSION}/data/`;
+const EJS_DATA = "https://cdn.jsdelivr.net/gh/devcheckra1n/arcade@main/rt/";
+const EJS_DATA_FALLBACK = `https://cdn.jsdelivr.net/npm/@emulatorjs/emulatorjs@${EJS_VERSION}/data/`;
+// cores copied into rt/cores; everything else still comes from npm
+const LOCAL_CORES = new Set(["fceumm", "snes9x", "mupen64plus_next", "gambatte", "mgba", "pcsx_rearmed", "genesis_plus_gx", "mednafen_pce", "fbneo"]);
 const EJS_CORES = [
   "a5200", "beetle_vb", "desmume", "desmume2015", "dosbox_pure", "fbalpha2012_cps1", "fbalpha2012_cps2", "fbneo",
   "fceumm", "gambatte", "gearcoleco", "genesis_plus_gx", "handy", "mame2003", "mame2003_plus", "mednafen_ngp",
@@ -482,6 +485,7 @@ const EXTRA_SHADERS = {
 function corePaths() {
   const p = {};
   for (const c of EJS_CORES) {
+    if (LOCAL_CORES.has(c)) continue;
     const base = `https://cdn.jsdelivr.net/npm/@emulatorjs/core-${c}@${EJS_VERSION}/`;
     p[c + ".json"] = base + "reports/" + c + ".json";
     for (const v of ["", "-thread", "-legacy", "-thread-legacy"]) p[c + v + "-wasm.data"] = base + c + v + "-wasm.data";
@@ -1606,6 +1610,7 @@ function playerPage(game) {
     game: gameSource(game),
     bios: biosSource(game),
     data: EJS_DATA,
+    dataFallback: EJS_DATA_FALLBACK,
     paths: corePaths(),
     shaders: $("crt").value in EXTRA_SHADERS ? { [$("crt").value]: EXTRA_SHADERS[$("crt").value] } : null,
     controls: ejsControls(scheme),
@@ -2052,16 +2057,30 @@ ${STATES_SRC}
     }
   }, 1000);
 
-  const s = document.createElement("script");
-  s.src = cfg.data + "loader.js";
-  s.onerror = () => {
+  const giveUp = (why) => {
     clearInterval(mirror);
     clearInterval(stall);
     clearInterval(factTimer);
-    core.fail("couldn't load EmulatorJS from cdn.jsdelivr.net. is it blocked on this network?");
+    core.fail(why);
     live.textContent = "";
   };
-  document.body.appendChild(s);
+  // a filter can answer with its own "blocked" page instead of the script:
+  // it still "loads", but EmulatorJS never shows up
+  const loadRuntime = (base, last) => {
+    window.EJS_pathtodata = base;
+    const s = document.createElement("script");
+    s.src = base + "loader.js";
+    s.onerror = () => last ? giveUp("couldn't download the emulator. this network may be blocking cdn.jsdelivr.net")
+                           : loadRuntime(cfg.dataFallback, true);
+    // the real loader adds script tags for its own files straight away
+    s.onload = () => setTimeout(() => {
+      if (window.EJS_emulator || window.EmulatorJS || document.querySelector('script[src^="' + base + 'src/"], script[src^="' + base + 'emulator"]')) return;
+      if (!last) return loadRuntime(cfg.dataFallback, true);
+      giveUp("the emulator download was replaced by something else, probably a network filter's block page");
+    }, 1500);
+    document.body.appendChild(s);
+  };
+  loadRuntime(cfg.data, false);
 })();
 <\/script></body></html>`;
 }
