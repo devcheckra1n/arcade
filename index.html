@@ -451,7 +451,7 @@
   </div>
 </aside>
 
-<div id="overlay"><button class="btn" id="closeOverlay">close</button><iframe id="frame" allow="autoplay; fullscreen; gamepad"></iframe></div>
+<div id="overlay"><button class="btn" id="closeOverlay">close</button><iframe id="frame" allow="autoplay *; fullscreen *; gamepad *"></iframe></div>
 <div id="toast"></div>
 
 <script>
@@ -1582,6 +1582,11 @@ const GAME_FACTS = [
     "In Sonic Labyrinth Eggman swaps Sonic's speed shoes for slow-down boots, so he can't jump and has to spin-dash instead.",
     "It came out on the Game Gear in 1995, with an isometric view unlike any other Sonic game of the time.",
   ]],
+  ["arcade", /street fighter ii|sf2ce/i, [
+    "Champion Edition (1992) was the first version that let you play as the four bosses: Balrog, Vega, Sagat and M. Bison.",
+    "It also added mirror matches, so two players could finally pick the same fighter.",
+    "In Japan the boxer is M. Bison and the dictator is Vega; the names were shuffled for the western release.",
+  ]],
   ["arcade", /galaga/i, [
     "Galaga is Namco's 1981 sequel to Galaxian; Midway distributed it in North American arcades.",
     "Let a Boss Galaga capture your ship with its tractor beam, then shoot it to rescue the ship and fly two fighters at once.",
@@ -1885,6 +1890,14 @@ ${STATES_SRC}
   window.EJS_core = cfg.core;
   window.EJS_gameName = cfg.name;
   window.EJS_gameUrl = game;
+  // if the browser still refuses controllers here, EmulatorJS would throw while
+  // starting and hang; report "no controllers" instead of crashing
+  try {
+    if (navigator.getGamepads) navigator.getGamepads();
+  } catch (e) {
+    try { Object.defineProperty(Navigator.prototype, "getGamepads", { value: () => [], configurable: true }); } catch (e2) {}
+  }
+
   window.EJS_pathtodata = cfg.data;
   window.EJS_paths = cfg.paths;
   if (cfg.shaders) window.EJS_shaders = cfg.shaders;
@@ -2142,7 +2155,9 @@ function launch(game) {
       d.documentElement.style.cssText = "height:100%;background:#000";
       d.body.style.cssText = "margin:0;height:100%;overflow:hidden";
       const f = d.createElement("iframe");
-      f.allow = "autoplay; fullscreen; gamepad";
+      // "*" delegates to the frame whatever its origin; a bare feature name only
+      // matches the parent's origin, which pages opened from disk don't have
+      f.allow = "autoplay *; fullscreen *; gamepad *";
       f.allowFullscreen = true;
       f.style.cssText = "display:block;border:0;width:100%;height:100%";
       f.srcdoc = html;
