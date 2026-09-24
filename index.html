@@ -287,10 +287,6 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20h16M12 4v12m0 0-4-4m4 4 4-4"/></svg>
       local file
     </button>
-    <button class="btn" id="openSaveIO">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 3h11l3 3v15H5z"/><path d="M8 3v5h7V3M8 21v-7h8v7"/></svg>
-      saves
-    </button>
     <button class="btn" id="lockBtn" hidden title="forget the password on this device">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
       lock
@@ -381,21 +377,6 @@
     </div>
     <p class="hint" style="margin:0 0 14px">states made with the save state button in a game land here. exported files also load through the game's load state menu.</p>
     <div class="states" id="savesList"></div>
-  </div>
-</dialog>
-
-<dialog id="saveIO">
-  <div class="dhead"><h3>import / export save</h3><button class="x" id="saveIOClose">×</button></div>
-  <div class="dbody">
-    <div class="field"><label>game</label><select id="saveIOGame"></select></div>
-    <p class="hint" id="saveIOState" style="margin:0 0 16px"></p>
-    <div class="row">
-      <button class="btn primary" id="saveIOImport">import save file</button>
-      <button class="btn" id="saveIOExport">export save file</button>
-      <button class="btn ghost" id="saveIOCancel" hidden>cancel import</button>
-      <input type="file" id="saveIOFile" hidden>
-    </div>
-    <p class="hint" style="margin:16px 0 0">imports are written into the game the next time it boots, replacing its save. battery saves and memory cards from other emulators work (.srm, .sav, .mcr and the like). export grabs the save the game last wrote.</p>
   </div>
 </dialog>
 
@@ -807,7 +788,6 @@ function statesDb() {
     r.onupgradeneeded = () => {
       const db = r.result;
       if (!db.objectStoreNames.contains("states")) db.createObjectStore("states", { keyPath: "id", autoIncrement: true }).createIndex("game", "game");
-      if (!db.objectStoreNames.contains("inject")) db.createObjectStore("inject", { keyPath: "game" });
     };
     r.onsuccess = () => resolve(r.result);
     r.onerror = () => reject(r.error);
@@ -837,21 +817,8 @@ function deleteState(id) {
   return statesTx("readwrite", (s) => s.delete(id));
 }
 
-// one queued save file per game, written into the core on its next launch
-function getInject(game) {
-  return statesTx("readonly", (s) => s.get(game), "inject");
-}
-
-function putInject(rec) {
-  return statesTx("readwrite", (s) => s.put(rec), "inject");
-}
-
-function deleteInject(game) {
-  return statesTx("readwrite", (s) => s.delete(game), "inject");
-}
-
 // the player page gets the same storage code
-const STATES_SRC = [statesDb, statesTx, statesFor, putState, deleteState, getInject, putInject, deleteInject].map(String).join("\n");
+const STATES_SRC = [statesDb, statesTx, statesFor, putState, deleteState].map(String).join("\n");
 
 const gameKey = (g) => g.core + "/" + g.name;
 
@@ -928,103 +895,6 @@ $("savesExportAll").onclick = async () => {
     download(st.data, stateFileName(st));
     await new Promise((r) => setTimeout(r, 250));
   }
-};
-
-// ---- in-game save import / export ----
-
-const ioGames = () => allGames().filter((g) => g.lib || g.url);
-
-function romStem(g) {
-  return gameFileName(g).replace(/\.[^.]+$/, "");
-}
-
-// EmulatorJS keeps saves in its own IndexedDB as /data/saves/<core>/<rom name>.srm
-async function readEjsSave(g) {
-  const dbs = indexedDB.databases ? await indexedDB.databases() : [{ name: "/data/saves" }];
-  if (!dbs.some((d) => d.name === "/data/saves")) return null;
-  const db = await new Promise((ok, bad) => {
-    const r = indexedDB.open("/data/saves");
-    r.onsuccess = () => ok(r.result);
-    r.onerror = () => bad(r.error);
-  });
-  try {
-    if (!db.objectStoreNames.contains("FILE_DATA")) return null;
-    const all = await new Promise((ok, bad) => {
-      const out = [];
-      const cur = db.transaction("FILE_DATA").objectStore("FILE_DATA").openCursor();
-      cur.onsuccess = () => {
-        const c = cur.result;
-        if (!c) return ok(out);
-        if (c.value && c.value.contents && String(c.key).endsWith("/" + romStem(g) + ".srm")) out.push({ key: c.key, ...c.value });
-        c.continue();
-      };
-      cur.onerror = () => bad(cur.error);
-    });
-    all.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-    return all[0] || null;
-  } finally {
-    db.close();
-  }
-}
-
-function ioGame() {
-  return ioGames().find((g) => gameKey(g) === $("saveIOGame").value);
-}
-
-async function drawSaveIO() {
-  const g = ioGame();
-  if (!g) {
-    $("saveIOState").textContent = "no games to pick from yet";
-    return;
-  }
-  let pending = null, current = null;
-  try { pending = await getInject(gameKey(g)); } catch {}
-  try { current = await readEjsSave(g); } catch {}
-  const parts = [];
-  parts.push(current ? `current save: ${Math.ceil(current.contents.length / 1024)} KB, ${new Date(current.timestamp).toLocaleString()}` : "no save yet");
-  if (pending) parts.push(`queued import: ${pending.name}, applies on next boot`);
-  $("saveIOState").textContent = parts.join(" · ");
-  $("saveIOCancel").hidden = !pending;
-  $("saveIOExport").disabled = !current;
-}
-
-$("openSaveIO").onclick = () => {
-  const sel = $("saveIOGame");
-  const keep = sel.value;
-  sel.textContent = "";
-  const byCore = {};
-  for (const g of ioGames()) (byCore[g.core] ||= []).push(g);
-  for (const core of Object.keys(SYSTEMS).filter((k) => byCore[k])) {
-    const grp = el("optgroup", { label: SYSTEMS[core].name });
-    for (const g of byCore[core]) grp.append(el("option", { value: gameKey(g), textContent: displayName(g.name) }));
-    sel.append(grp);
-  }
-  if (keep && [...sel.options].some((o) => o.value === keep)) sel.value = keep;
-  drawSaveIO();
-  $("saveIO").showModal();
-};
-$("saveIOClose").onclick = () => $("saveIO").close();
-$("saveIOGame").onchange = drawSaveIO;
-$("saveIOImport").onclick = () => $("saveIOFile").click();
-$("saveIOFile").onchange = async () => {
-  const f = $("saveIOFile").files[0];
-  $("saveIOFile").value = "";
-  const g = ioGame();
-  if (!f || !g) return;
-  await putInject({ game: gameKey(g), name: f.name, data: new Blob([await f.arrayBuffer()]), time: Date.now() });
-  toast("save queued for " + displayName(g.name));
-  drawSaveIO();
-};
-$("saveIOCancel").onclick = async () => {
-  const g = ioGame();
-  if (g) await deleteInject(gameKey(g));
-  drawSaveIO();
-};
-$("saveIOExport").onclick = async () => {
-  const g = ioGame();
-  const cur = g && await readEjsSave(g);
-  if (!cur) return toast("no save yet for this game");
-  download(new Blob([cur.contents]), romStem(g) + ".srm");
 };
 
 // ---- library ----
@@ -1886,36 +1756,10 @@ ${STATES_SRC}
       live.textContent = "";
     }
   }, 200);
-  // same steps as EmulatorJS's own "import save file", run once for a queued save
-  async function injectSave() {
-    let pending = null;
-    try { pending = await getInject(cfg.stateKey); } catch (e) { return; }
-    if (!pending) return;
-    const step = row("inject save " + pending.name);
-    try {
-      const gm = window.EJS_emulator.gameManager;
-      const path = gm.getSaveFilePath();
-      let dir = "";
-      for (const part of path.split("/").slice(0, -1)) {
-        if (!part) continue;
-        dir += "/" + part;
-        if (!gm.FS.analyzePath(dir).exists) gm.FS.mkdir(dir);
-      }
-      if (gm.FS.analyzePath(path).exists) gm.FS.unlink(path);
-      gm.FS.writeFile(path, new Uint8Array(await pending.data.arrayBuffer()));
-      gm.loadSaveFiles();
-      await deleteInject(cfg.stateKey);
-      step.ok();
-    } catch (e) {
-      step.fail("couldn't inject the save: " + (e && e.message || e));
-    }
-  }
-
   window.EJS_onGameStart = async () => {
     clearInterval(mirror);
     clearInterval(factTimer);
     core.ok();
-    await injectSave();
     live.textContent = "running";
     setTimeout(() => {
       boot.classList.add("gone");
