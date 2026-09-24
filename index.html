@@ -6,267 +6,316 @@
 <title>arcade</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Monoton&family=Syne:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg: #0b0c10;
-    --bg2: #111319;
-    --card: #161922;
-    --card2: #1c202b;
-    --line: #262b38;
-    --text: #eceef4;
-    --dim: #8b92a6;
-    --faint: #555c70;
-    --accent: #7c5cff;
-    --accent2: #22d3ee;
+    --room: #0a0710;
+    --velvet: #16101f;
+    --velvet2: #1f1630;
+    --line: rgba(182, 156, 255, .14);
+    --line2: rgba(182, 156, 255, .32);
+    --uv: #b69cff;
+    --stamp: #ff4fa3;
+    --amber: #ffb45c;
+    --text: #ece6ff;
+    --dim: #8a7fa6;
+    --faint: #5b5170;
     --danger: #ff5d73;
-    --radius: 14px;
-    --sans: "Space Grotesk", system-ui, sans-serif;
-    --mono: "JetBrains Mono", ui-monospace, monospace;
+    --radius: 10px;
+    --sans: "Syne", system-ui, sans-serif;
+    --neon: "Monoton", "Syne", system-ui, sans-serif;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    /* legacy names used by the dialogs */
+    --card: var(--velvet);
+    --card2: var(--velvet2);
+    --bg: var(--room);
+    --bg2: #120c1a;
+    --accent: var(--uv);
+    --accent2: var(--stamp);
   }
   * { box-sizing: border-box; }
   [hidden] { display: none !important; }
   html { scroll-behavior: smooth; }
-  body {
-    margin: 0; min-height: 100vh; color: var(--text); font: 15px/1.45 var(--sans);
-    background:
-      radial-gradient(1200px 600px at 10% -10%, rgba(124, 92, 255, .18), transparent 60%),
-      radial-gradient(900px 500px at 110% 10%, rgba(34, 211, 238, .10), transparent 60%),
-      var(--bg);
-    background-attachment: fixed;
-  }
+  body { margin: 0; min-height: 100vh; color: var(--text); font: 15px/1.5 var(--sans); background: var(--room); }
   button, input, select { font: inherit; color: inherit; }
   button { cursor: pointer; }
-  ::selection { background: var(--accent); color: #fff; }
+  ::selection { background: var(--stamp); color: #fff; }
+  :focus-visible { outline: 2px solid var(--stamp); outline-offset: 2px; }
+
+  /* static light: two blacklight beams from the ceiling and a warm spill off the booth */
+  .beams { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; }
+  .beams::before, .beams::after {
+    content: ""; position: absolute; top: -20vh; width: 70vw; height: 140vh; opacity: .5;
+  }
+  .beams::before { left: -18vw; background: conic-gradient(from 160deg at 50% 0%, transparent 0deg, rgba(182, 156, 255, .16) 12deg, transparent 28deg); }
+  .beams::after { right: -22vw; background: conic-gradient(from 180deg at 50% 0%, transparent 0deg, rgba(255, 79, 163, .10) 10deg, transparent 22deg); }
+  .beams i { position: absolute; left: 0; right: 0; bottom: -30vh; height: 60vh; background: radial-gradient(50% 50% at 50% 100%, rgba(255, 180, 92, .10), transparent 70%); }
 
   #rail {
-    position: fixed; inset: 0 auto 0 0; width: 52px; z-index: 5;
-    display: flex; flex-direction: column; align-items: center; gap: 1px;
-    padding: 84px 0 16px; overflow-y: auto; scrollbar-width: none;
-    background: rgba(11, 12, 16, .6); backdrop-filter: blur(12px);
-    border-right: 1px solid var(--line);
+    position: fixed; inset: 0 auto 0 0; width: 56px; z-index: 5;
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    padding: 104px 0 16px; overflow-y: auto; scrollbar-width: none;
+    background: rgba(10, 7, 16, .92); border-right: 1px solid var(--line);
   }
   #rail::-webkit-scrollbar { display: none; }
   #rail button {
-    width: 34px; height: 24px; border: 0; border-radius: 6px; background: none;
-    font: 600 12px var(--mono); color: var(--dim);
+    width: 38px; height: 26px; border: 0; border-radius: 6px; background: none;
+    font: 700 12px var(--sans); color: var(--dim);
   }
-  #rail button:hover { background: var(--card2); color: var(--text); }
-  #rail button:disabled { color: var(--line); cursor: default; background: none; }
+  #rail button:hover { color: var(--uv); text-shadow: 0 0 10px rgba(182, 156, 255, .7); }
+  #rail button:disabled { color: var(--faint); opacity: .4; cursor: default; text-shadow: none; }
+  #rail.consoles button { font-size: 10px; width: 46px; letter-spacing: .02em; }
+  #rail button.pin { font-size: 15px; color: var(--stamp); }
 
   header {
     position: sticky; top: 0; z-index: 4;
-    padding: 16px 24px 14px 76px;
-    background: rgba(11, 12, 16, .72); backdrop-filter: blur(14px);
+    padding: 18px 24px 14px 80px;
+    background: linear-gradient(rgba(10, 7, 16, .97), rgba(10, 7, 16, .9));
     border-bottom: 1px solid var(--line);
   }
-  .bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; max-width: 1200px; margin: 0 auto; }
-  .logo { font-weight: 700; font-size: 22px; letter-spacing: -.02em; margin-right: 8px; }
-  .logo span { background: linear-gradient(90deg, var(--accent), var(--accent2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
-  .search {
-    flex: 1; min-width: 180px; display: flex; align-items: center; gap: 8px;
-    background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 0 12px;
+  .bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; max-width: 1240px; margin: 0 auto; }
+
+  .wordmark { margin-right: 14px; height: 44px; display: flex; align-items: center; }
+  .wordmark svg { height: 44px; overflow: visible; filter: drop-shadow(0 0 6px rgba(182, 156, 255, .9)) drop-shadow(0 0 18px rgba(182, 156, 255, .5)); }
+  .wordmark text {
+    font: 400 40px var(--neon); fill: #f4eaff; fill-opacity: 0;
+    stroke: #f4eaff; stroke-width: .9; stroke-linejoin: round; stroke-linecap: round;
+    stroke-dasharray: 260; stroke-dashoffset: 260;
+    animation: pen 11s cubic-bezier(.45, 0, .25, 1) infinite;
   }
-  .search:focus-within { border-color: var(--accent); }
+  .wordmark.still text { animation: none; stroke-dashoffset: 0; fill-opacity: 1; }
+  /* write the outline, fill it in, hold, wipe it away the same way, rest */
+  @keyframes pen {
+    0% { stroke-dashoffset: 260; fill-opacity: 0; }
+    16% { stroke-dashoffset: 0; fill-opacity: 0; }
+    22% { fill-opacity: 1; }
+    68% { stroke-dashoffset: 0; fill-opacity: 1; }
+    73% { fill-opacity: 0; }
+    86%, 100% { stroke-dashoffset: -260; fill-opacity: 0; }
+  }
+
+  .search {
+    flex: 1 1 180px; min-width: 150px; display: flex; align-items: center; gap: 8px;
+    background: var(--velvet); border: 1px solid var(--line); border-radius: 999px; padding: 0 14px;
+  }
+  .search:focus-within { border-color: var(--uv); box-shadow: 0 0 0 3px rgba(182, 156, 255, .15); }
   .search input { flex: 1; border: 0; background: none; outline: none; padding: 10px 0; }
-  .search kbd { font: 11px var(--mono); color: var(--faint); border: 1px solid var(--line); border-radius: 5px; padding: 1px 6px; }
+  .search input::placeholder { color: var(--faint); }
+  .search kbd { font: 600 11px var(--sans); color: var(--dim); border: 1px solid var(--line); border-radius: 5px; padding: 1px 6px; }
+  .search svg { color: var(--dim); }
 
   .btn {
     display: inline-flex; align-items: center; gap: 6px;
-    background: var(--card); border: 1px solid var(--line); border-radius: 10px;
-    padding: 9px 14px; white-space: nowrap; transition: border-color .15s, background .15s;
+    background: var(--velvet); border: 1px solid var(--line); border-radius: 999px;
+    padding: 9px 15px; white-space: nowrap; font-weight: 600; font-size: 14px;
+    transition: border-color .15s, color .15s, box-shadow .15s;
   }
-  .btn:hover { border-color: var(--faint); background: var(--card2); }
-  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
-  .btn.primary:hover { filter: brightness(1.1); }
+  .btn:hover { border-color: var(--line2); color: #fff; }
+  .btn.primary { background: var(--uv); border-color: var(--uv); color: #1a1030; }
+  .btn.primary:hover { box-shadow: 0 0 22px rgba(182, 156, 255, .55); color: #1a1030; }
   .btn.ghost { background: none; }
-  .btn.small { padding: 5px 10px; font-size: 13px; border-radius: 8px; }
+  .btn.small { padding: 5px 11px; font-size: 13px; }
   .btn svg { width: 16px; height: 16px; }
+  .btn.icon { width: 38px; height: 38px; padding: 0; justify-content: center; }
+  .btn.icon svg { width: 18px; height: 18px; }
+  .btn:disabled { opacity: .4; cursor: default; }
 
   .toggle { display: inline-flex; align-items: center; gap: 8px; color: var(--dim); font-size: 13px; cursor: pointer; user-select: none; }
-  .toggle input { display: none; }
-  .toggle i { width: 34px; height: 20px; border-radius: 99px; background: var(--line); position: relative; transition: background .2s; }
-  .toggle i::after { content: ""; position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%; background: #fff; transition: transform .2s; }
-  .toggle input:checked + i { background: var(--accent); }
-  .toggle input:checked + i::after { transform: translateX(14px); }
+  .toggle input { position: absolute; opacity: 0; width: 0; height: 0; }
+  .toggle i { width: 34px; height: 20px; border-radius: 99px; background: var(--velvet2); border: 1px solid var(--line); position: relative; transition: background .2s; }
+  .toggle i::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--dim); transition: transform .2s, background .2s; }
+  .toggle input:checked + i { background: rgba(182, 156, 255, .25); border-color: var(--uv); }
+  .toggle input:checked + i::after { transform: translateX(14px); background: var(--uv); box-shadow: 0 0 8px var(--uv); }
+  .toggle input:focus-visible + i { outline: 2px solid var(--stamp); outline-offset: 2px; }
 
-  .seg { display: inline-flex; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 3px; }
-  .seg button { border: 0; background: none; color: var(--dim); padding: 6px 11px; border-radius: 7px; font-size: 13px; }
-  .seg button.on { background: var(--card2); color: var(--text); }
+  .seg { display: inline-flex; background: var(--velvet); border: 1px solid var(--line); border-radius: 999px; padding: 3px; }
+  .seg button { border: 0; background: none; color: var(--dim); padding: 6px 12px; border-radius: 999px; font-size: 13px; font-weight: 600; }
+  .seg button.on { background: var(--velvet2); color: var(--uv); }
   .pick { display: inline-flex; align-items: center; gap: 6px; color: var(--dim); font-size: 13px; }
-  .pick select { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; font-size: 13px; }
-  .chips { display: flex; gap: 6px; flex-wrap: wrap; max-width: 1200px; margin: 12px auto 0; }
-  .chip {
-    border: 1px solid var(--line); background: none; border-radius: 99px;
-    padding: 4px 12px; font-size: 13px; color: var(--dim);
-  }
-  .chip:hover { color: var(--text); border-color: var(--faint); }
-  .chip.on { background: var(--text); color: var(--bg); border-color: var(--text); }
-  .chip b { font: 600 11px var(--mono); opacity: .6; margin-left: 4px; }
+  .pick select { background: var(--velvet); border: 1px solid var(--line); border-radius: 999px; padding: 6px 10px; font-size: 13px; }
 
-  main { padding: 8px 24px 80px 76px; }
-  .wrap { max-width: 1200px; margin: 0 auto; }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; max-width: 1240px; margin: 14px auto 0; }
+  .chip { border: 1px solid var(--line); background: none; border-radius: 999px; padding: 4px 12px; font-size: 13px; font-weight: 600; color: var(--dim); }
+  .chip:hover { color: var(--text); border-color: var(--line2); }
+  .chip.on { color: var(--stamp); border-color: var(--stamp); box-shadow: 0 0 12px rgba(255, 79, 163, .35), inset 0 0 10px rgba(255, 79, 163, .12); }
+  .chip b { font-weight: 500; opacity: .6; margin-left: 4px; }
+
+  main { padding: 8px 24px 90px 80px; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
   section h2 {
-    display: flex; align-items: baseline; gap: 10px;
-    font: 700 13px var(--mono); color: var(--dim); letter-spacing: .1em;
-    margin: 32px 0 12px; scroll-margin-top: 140px;
+    display: flex; align-items: baseline; gap: 12px;
+    font: 800 22px/1.2 var(--sans); letter-spacing: -.01em; color: var(--text);
+    margin: 38px 0 14px; scroll-margin-top: 150px;
   }
-  section h2::after { content: ""; flex: 1; height: 1px; background: var(--line); order: 3; }
-  section h2 .count { color: var(--faint); font-weight: 400; order: 2; }
-  #rail.consoles button { font-size: 10px; width: 44px; letter-spacing: -.02em; }
-  #rail button.pin { font-size: 14px; color: var(--accent2); }
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; }
+  section h2::after { content: ""; flex: 1; height: 1px; background: linear-gradient(90deg, var(--line2), transparent); order: 3; align-self: center; }
+  section h2 .count { color: var(--dim); font-weight: 500; font-size: 14px; order: 2; }
+  section.pinned h2 { color: var(--stamp); text-shadow: 0 0 18px rgba(255, 79, 163, .45); }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(176px, 1fr)); gap: 18px; perspective: 900px; }
 
+  /* flyers: tilt toward the cursor and catch a glare */
   .card {
+    --rx: 0deg; --ry: 0deg; --gx: 50%; --gy: 0%; --glare: 0;
     position: relative; text-align: left; padding: 0; overflow: hidden;
-    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
-    transition: transform .18s, border-color .18s, box-shadow .18s;
+    background: var(--velvet); border: 1px solid var(--line); border-radius: var(--radius);
+    transform: rotateX(var(--rx)) rotateY(var(--ry)); transform-style: preserve-3d;
+    transition: transform .25s ease-out, border-color .2s, box-shadow .2s;
   }
-  .card:hover { transform: translateY(-3px); border-color: var(--faint); box-shadow: 0 12px 30px rgba(0,0,0,.4); }
+  .card.tilting { transition: transform .06s linear, border-color .2s, box-shadow .2s; }
+  .card:hover { border-color: var(--line2); box-shadow: 0 18px 40px rgba(0, 0, 0, .55), 0 0 26px rgba(182, 156, 255, .18); }
+  .card:focus-visible { outline: none; border-color: var(--stamp); box-shadow: 0 0 0 2px var(--stamp), 0 0 28px rgba(255, 79, 163, .45); }
+  .card:active { transform: rotateX(var(--rx)) rotateY(var(--ry)) scale(.97); }
+  .card .glare {
+    position: absolute; inset: 0; pointer-events: none; opacity: var(--glare); transition: opacity .25s; mix-blend-mode: screen;
+    background: radial-gradient(420px circle at var(--gx) var(--gy), rgba(255, 255, 255, .28), rgba(182, 156, 255, .08) 35%, transparent 60%);
+  }
   .cover {
     aspect-ratio: 3 / 4; display: grid; place-items: center; position: relative;
-    background: linear-gradient(135deg, var(--c1), var(--c2)); overflow: hidden;
+    background: linear-gradient(150deg, var(--c1), var(--c2)); overflow: hidden;
   }
   .cover img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
-  .cover img.bg { object-fit: cover; filter: blur(18px) brightness(.55); transform: scale(1.2); }
-  .cover .mono { font: 700 44px var(--sans); color: rgba(255,255,255,.9); text-shadow: 0 4px 20px rgba(0,0,0,.35); letter-spacing: -.03em; }
-  .cover .play {
-    position: absolute; inset: 0; display: grid; place-items: center;
-    background: rgba(0,0,0,.45); opacity: 0; transition: opacity .18s;
-  }
-  .cover .play svg { width: 44px; height: 44px; fill: #fff; }
-  .card:hover .play { opacity: 1; }
+  .cover img.bg { object-fit: cover; filter: blur(18px) brightness(.45) saturate(1.3); transform: scale(1.2); }
+  .cover .mono { font: 400 46px var(--neon); color: #fff; text-shadow: 0 0 14px rgba(255, 255, 255, .5); }
   .meta { padding: 10px 12px 12px; }
-  .meta .name { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .meta .sys { font: 11px var(--mono); color: var(--dim); text-transform: uppercase; letter-spacing: .06em; margin-top: 2px; }
+  .meta .name { font-weight: 700; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .meta .sys { font-size: 12px; color: var(--dim); margin-top: 1px; }
+  .card .fav {
+    position: absolute; top: 8px; right: 8px; width: 28px; height: 26px; border-radius: 8px;
+    display: grid; place-items: center; font-size: 15px; line-height: 1;
+    background: rgba(10, 7, 16, .7); color: rgba(255, 255, 255, .7); opacity: 0; transition: opacity .15s, color .15s;
+  }
+  .card:hover .fav, .card:focus-visible .fav, .card .fav.on { opacity: 1; }
+  .card .fav.on, .card .fav:hover { color: var(--stamp); text-shadow: 0 0 10px var(--stamp); }
   .card .del {
-    position: absolute; top: 8px; right: 8px; width: 26px; height: 26px; border-radius: 8px;
-    border: 0; background: rgba(0,0,0,.55); color: #fff; opacity: 0; transition: opacity .15s;
+    position: absolute; top: 8px; right: 42px; width: 26px; height: 26px; border-radius: 8px;
+    background: rgba(10, 7, 16, .7); color: #fff; opacity: 0; transition: opacity .15s;
     display: grid; place-items: center; font-size: 16px; line-height: 1;
   }
   .card:hover .del { opacity: 1; }
   .card .del:hover { background: var(--danger); }
 
+  /* details panel */
+  #details {
+    position: fixed; top: 0; right: 0; bottom: 0; z-index: 20; width: min(420px, 100vw);
+    background: #110b19; border-left: 1px solid var(--line2);
+    box-shadow: -30px 0 80px rgba(0, 0, 0, .6), -1px 0 24px rgba(182, 156, 255, .12);
+    transform: translateX(105%); transition: transform .28s cubic-bezier(.2, .8, .2, 1);
+    display: flex; flex-direction: column; overflow-y: auto;
+  }
+  #details.open { transform: none; }
+  #details .dx { position: absolute; top: 12px; right: 12px; z-index: 2; }
+  #details .dcover { position: relative; aspect-ratio: 3 / 4; max-height: 52vh; margin: 18px 18px 0; border-radius: var(--radius); overflow: hidden; border: 1px solid var(--line); }
+  #details .dcover .cover { aspect-ratio: auto; height: 100%; }
+  #details .dbody2 { padding: 18px 22px 26px; display: flex; flex-direction: column; gap: 14px; }
+  #details h3 { margin: 0; font: 800 26px/1.15 var(--sans); letter-spacing: -.015em; }
+  #details .dsys { color: var(--dim); font-size: 14px; margin-top: -8px; }
+  #details .dactions { display: flex; gap: 8px; flex-wrap: wrap; }
+  #details .play {
+    flex: 1; min-width: 160px; justify-content: center; padding: 13px 18px; font-size: 16px; font-weight: 800;
+    background: var(--amber); border-color: var(--amber); color: #2a1600;
+  }
+  #details .play:hover, #details .play:focus-visible { box-shadow: 0 0 28px rgba(255, 180, 92, .55); color: #2a1600; }
+  #details .favbtn.on { color: var(--stamp); border-color: var(--stamp); }
+  #details .dfact { color: var(--dim); font-size: 14px; line-height: 1.55; border-left: 2px solid var(--uv); padding-left: 12px; }
+  #details .dkeys { color: var(--faint); font-size: 12px; }
+  #scrim { position: fixed; inset: 0; z-index: 19; background: rgba(5, 3, 9, .5); opacity: 0; pointer-events: none; transition: opacity .25s; }
+  #scrim.open { opacity: 1; pointer-events: auto; }
+
   .empty { text-align: center; padding: 80px 20px; color: var(--dim); }
-  .empty h3 { color: var(--text); font-size: 20px; margin: 0 0 6px; }
+  .empty h3 { color: var(--text); font-size: 22px; margin: 0 0 6px; }
   .empty .row { justify-content: center; margin-top: 16px; }
 
   dialog {
     width: min(560px, calc(100vw - 32px)); max-height: calc(100vh - 48px);
-    padding: 0; border: 1px solid var(--line); border-radius: 18px;
-    background: var(--bg2); color: var(--text); box-shadow: 0 30px 80px rgba(0,0,0,.6);
+    padding: 0; border: 1px solid var(--line2); border-radius: 16px;
+    background: #120c1a; color: var(--text); box-shadow: 0 30px 80px rgba(0, 0, 0, .7), 0 0 40px rgba(182, 156, 255, .12);
   }
   dialog.wide { width: min(760px, calc(100vw - 32px)); }
-  dialog::backdrop { background: rgba(5, 6, 9, .7); backdrop-filter: blur(4px); }
+  dialog::backdrop { background: rgba(5, 3, 9, .75); }
   .dhead { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px; border-bottom: 1px solid var(--line); }
-  .dhead h3 { margin: 0; font-size: 18px; }
+  .dhead h3 { margin: 0; font-size: 19px; font-weight: 800; }
   .dbody { padding: 18px 20px; overflow-y: auto; max-height: calc(100vh - 200px); }
   .dfoot { display: flex; justify-content: flex-end; gap: 8px; padding: 14px 20px; border-top: 1px solid var(--line); }
   .field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 14px; }
-  .field label { font-size: 12px; color: var(--dim); letter-spacing: .04em; }
-  .field input, .field select, select.plain {
-    background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; outline: none;
-  }
-  .field input:focus, .field select:focus { border-color: var(--accent); }
+  .field label { font-size: 13px; color: var(--dim); }
+  .field input, .field select, select.plain { background: var(--velvet); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; outline: none; }
+  .field input:focus, .field select:focus { border-color: var(--uv); }
   .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
   .row > .field { flex: 1; min-width: 140px; }
-  .hint { font-size: 12px; color: var(--faint); margin: -6px 0 14px; }
-  .x { border: 0; background: none; color: var(--dim); font-size: 22px; line-height: 1; padding: 4px; }
+  .hint { font-size: 13px; color: var(--faint); margin: -6px 0 14px; }
+  .x { border: 0; background: none; color: var(--dim); font-size: 24px; line-height: 1; padding: 4px 8px; border-radius: 8px; }
   .x:hover { color: var(--text); }
 
-  .drop {
-    border: 1.5px dashed var(--line); border-radius: 12px; padding: 28px; text-align: center; color: var(--dim);
-    transition: border-color .15s, background .15s; cursor: pointer; margin-bottom: 14px;
-  }
-  .drop.over, .drop:hover { border-color: var(--accent); background: rgba(124, 92, 255, .06); }
+  .drop { border: 1.5px dashed var(--line2); border-radius: 12px; padding: 28px; text-align: center; color: var(--dim); transition: border-color .15s, background .15s; cursor: pointer; margin-bottom: 14px; }
+  .drop.over, .drop:hover { border-color: var(--uv); background: rgba(182, 156, 255, .06); }
   .drop b { color: var(--text); }
 
   .ctl-top { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
   .ctl-top select { min-width: 200px; }
   table.ctl { width: 100%; border-collapse: collapse; }
-  table.ctl th { text-align: left; font: 600 11px var(--mono); color: var(--faint); letter-spacing: .08em; padding: 0 8px 8px; }
+  table.ctl th { text-align: left; font-size: 12px; font-weight: 600; color: var(--faint); padding: 0 8px 8px; }
   table.ctl td { padding: 5px 8px; border-top: 1px solid var(--line); }
-  table.ctl td:first-child { font: 600 13px var(--mono); color: var(--dim); width: 38%; }
-  table.ctl tr.changed td:first-child { color: var(--accent2); }
-  .keycap {
-    min-width: 120px; padding: 6px 10px; border-radius: 8px; text-align: left;
-    background: var(--card); border: 1px solid var(--line); border-bottom-width: 3px; font: 13px var(--mono);
-  }
-  .keycap:hover { border-color: var(--faint); }
-  .keycap.listening { border-color: var(--accent); color: var(--accent); animation: pulse 1s infinite; }
+  table.ctl td:first-child { font-weight: 700; font-size: 13px; color: var(--dim); width: 38%; }
+  table.ctl tr.changed td:first-child { color: var(--stamp); }
+  .keycap { min-width: 120px; padding: 6px 10px; border-radius: 8px; text-align: left; background: var(--velvet); border: 1px solid var(--line); border-bottom-width: 3px; font: 13px var(--mono); }
+  .keycap:hover { border-color: var(--line2); }
+  .keycap.listening { border-color: var(--stamp); color: var(--stamp); animation: pulse 1s infinite; }
   .keycap.none { color: var(--faint); }
   @keyframes pulse { 50% { opacity: .5; } }
-  table.ctl select { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; font-size: 13px; }
+  table.ctl select { background: var(--velvet); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; font-size: 13px; }
 
   #overlay { position: fixed; inset: 0; z-index: 50; background: #000; display: none; }
   #overlay iframe { width: 100%; height: 100%; border: 0; }
-  #overlay .btn { position: absolute; top: 10px; right: 10px; z-index: 51; background: rgba(0,0,0,.6); }
+  #overlay .btn { position: absolute; top: 10px; right: 10px; z-index: 51; background: rgba(0, 0, 0, .6); }
 
   .unlock {
     display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
-    margin: 24px 0 0; padding: 16px 18px; border-radius: var(--radius);
-    background: linear-gradient(135deg, rgba(124, 92, 255, .14), rgba(34, 211, 238, .06));
-    border: 1px solid rgba(124, 92, 255, .35);
+    margin: 28px 0 0; padding: 18px 20px; border-radius: 14px;
+    background: var(--velvet); border: 1px solid var(--line2); box-shadow: 0 0 40px rgba(182, 156, 255, .1);
   }
-  .unlock[hidden] { display: none; }
-  .unlock > svg { width: 22px; height: 22px; color: var(--accent); flex: none; }
+  .unlock > svg { width: 22px; height: 22px; color: var(--uv); flex: none; }
   .unlock .utext { flex: 1; min-width: 180px; display: flex; flex-direction: column; }
+  .unlock .utext b { font-weight: 800; }
   .unlock .utext span { color: var(--dim); font-size: 13px; }
   .unlock .utext span.err { color: var(--danger); }
-  .unlock input[type=password] {
-    background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 9px 12px; outline: none; width: 200px;
-  }
-  .unlock input[type=password]:focus { border-color: var(--accent); }
+  .unlock input[type=password] { background: var(--room); border: 1px solid var(--line); border-radius: 999px; padding: 9px 14px; outline: none; width: 200px; }
+  .unlock input[type=password]:focus { border-color: var(--uv); }
 
-  h4.sub { margin: 0 0 10px; font: 600 11px var(--mono); color: var(--faint); letter-spacing: .08em; text-transform: uppercase; }
-  .inject-state { font: 12px var(--mono); color: var(--dim); }
-  .inject-state.on { color: var(--accent2); }
   .states { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
-  .state { background: var(--card); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
-  .state .shot { aspect-ratio: 4 / 3; background: var(--bg) center / cover no-repeat; image-rendering: pixelated; }
+  .state { background: var(--velvet); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .state .shot { aspect-ratio: 4 / 3; background: var(--room) center / cover no-repeat; image-rendering: pixelated; }
   .state .info { padding: 8px 10px 10px; display: flex; align-items: center; gap: 6px; }
-  .state .info span { flex: 1; font: 12px var(--mono); color: var(--dim); }
+  .state .info span { flex: 1; font-size: 12px; color: var(--dim); }
   .states .none { grid-column: 1 / -1; text-align: center; color: var(--dim); padding: 30px 0; }
-  .card .fav {
-    position: absolute; top: 8px; right: 8px; width: 28px; height: 26px; border-radius: 8px;
-    display: grid; place-items: center; font-size: 15px; line-height: 1;
-    background: rgba(0,0,0,.55); color: rgba(255,255,255,.75); opacity: 0; transition: opacity .15s, color .15s;
-  }
-  .card:hover .fav, .card .fav.on { opacity: 1; }
-  .card .fav.on { color: #facc15; }
-  .card .fav:hover { color: #facc15; }
-  .card .del { right: 42px !important; }
-  .card .saves {
-    position: absolute; top: 8px; left: 8px; height: 26px; padding: 0 9px; border-radius: 8px;
-    background: rgba(0,0,0,.55); color: #fff; opacity: 0; transition: opacity .15s;
-    display: flex; align-items: center; gap: 5px; font-size: 12px;
-  }
-  .card .saves svg { width: 13px; height: 13px; }
-  .card:hover .saves { opacity: 1; }
-  .card .saves:hover { background: var(--accent); }
 
   #toast {
     position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 20px); z-index: 60;
-    background: var(--card2); border: 1px solid var(--line); border-radius: 10px; padding: 10px 16px;
-    opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s;
+    background: var(--velvet2); border: 1px solid var(--line2); border-radius: 999px; padding: 10px 18px;
+    box-shadow: 0 0 24px rgba(182, 156, 255, .2); opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s;
   }
   #toast.show { opacity: 1; transform: translate(-50%, 0); }
 
   @media (max-width: 640px) {
     #rail { display: none; }
     header, main { padding-left: 16px; padding-right: 16px; }
-    .logo { width: 100%; }
-    .grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
+    .wordmark { width: 100%; }
+    .grid { grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 12px; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .card, .card.tilting { transition: none; transform: none !important; }
+    .card .glare { display: none; }
+    .wordmark text { animation: none; stroke-dashoffset: 0; fill-opacity: 1; }
+    #details, #scrim { transition: none; }
   }
 </style>
 </head>
 <body>
 
+<div class="beams" aria-hidden="true"><i></i></div>
 <nav id="rail"></nav>
 
 <header>
   <div class="bar">
-    <div class="logo"><span>arcade</span></div>
+    <div class="wordmark" id="wordmark" aria-label="arcade"></div>
     <label class="search">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
       <input id="search" type="text" placeholder="search games" autocomplete="off" spellcheck="false">
@@ -279,17 +328,14 @@
     <label class="pick" title="crt filter, applies on the next launch">crt
       <select id="crt"><option value="off">off</option><option value="crt-easymode.glslp">easymode</option><option value="crt-hyllian-fast.glslp">hyllian fast</option></select>
     </label>
-    <button class="btn" id="openControls">
+    <button class="btn icon" id="openControls" title="controls" aria-label="controls">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></svg>
-      controls
     </button>
-    <button class="btn" id="openLocal">
+    <button class="btn icon" id="openLocal" title="local file" aria-label="local file">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20h16M12 4v12m0 0-4-4m4 4 4-4"/></svg>
-      local file
     </button>
-    <button class="btn" id="lockBtn" hidden title="forget the password on this device">
+    <button class="btn icon" id="lockBtn" hidden title="lock: forget the password on this device" aria-label="lock">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
-      lock
     </button>
     <button class="btn primary" id="openAdd">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
@@ -379,6 +425,27 @@
     <div class="states" id="savesList"></div>
   </div>
 </dialog>
+
+<div id="scrim"></div>
+<aside id="details" aria-hidden="true" aria-label="game details">
+  <button class="x dx" id="detailsClose" title="close (esc)">×</button>
+  <div class="dcover" id="dCover"></div>
+  <div class="dbody2">
+    <h3 id="dTitle"></h3>
+    <div class="dsys" id="dSys"></div>
+    <div class="dactions">
+      <button class="btn play" id="dPlay">
+        <svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M8 5v14l11-7z"/></svg>
+        play
+      </button>
+      <button class="btn favbtn" id="dFav">★ favourite</button>
+      <button class="btn" id="dStates">save states</button>
+      <button class="btn ghost" id="dRemove" hidden>remove</button>
+    </div>
+    <p class="dfact" id="dFact"></p>
+    <p class="dkeys">enter or A to play, esc or B to close, F or Y to star</p>
+  </div>
+</aside>
 
 <div id="overlay"><button class="btn" id="closeOverlay">close</button><iframe id="frame" allow="autoplay; fullscreen; gamepad"></iframe></div>
 <div id="toast"></div>
@@ -647,23 +714,24 @@ function card(g) {
     img.onerror = () => { img.remove(); bg.remove(); };
     cover.append(bg, img);
   }
-  cover.append(el("div", { className: "play", innerHTML: PLAY_ICON }));
-
   const c = el("button", { className: "card", title: g.name },
     cover,
     el("div", { className: "meta" },
       el("div", { className: "name", textContent: displayName(g.name) }),
-      el("div", { className: "sys", textContent: sys.name })));
-  c.onclick = () => launch(g);
+      el("div", { className: "sys", textContent: sys.name })),
+    el("div", { className: "glare" }));
+  c.gameRef = g;
+  c.onclick = (e) => {
+    clearTimeout(c.clickTimer);
+    if (e.detail === 0) return openDetails(g, c);   // keyboard: open right away
+    if (e.detail > 1) return;
+    c.clickTimer = setTimeout(() => openDetails(g, c), 240);
+  };
+  c.ondblclick = () => { clearTimeout(c.clickTimer); launch(g); };
 
   const fav = el("span", { className: "fav" + (favs.has(gameKey(g)) ? " on" : ""), title: "favourite", textContent: "★" });
   fav.onclick = (e) => { e.stopPropagation(); toggleFav(g); };
   c.append(fav);
-
-  const saves = el("span", { className: "saves", title: "save states",
-    innerHTML: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 3h11l3 3v15H5z"/><path d="M8 3v5h7V3M8 21v-7h8v7"/></svg>states' });
-  saves.onclick = (e) => { e.stopPropagation(); openSaves(g); };
-  c.append(saves);
 
   if (g.custom >= 0) {
     const del = el("span", { className: "del", title: "remove", textContent: "×" });
@@ -821,6 +889,211 @@ function deleteState(id) {
 const STATES_SRC = [statesDb, statesTx, statesFor, putState, deleteState].map(String).join("\n");
 
 const gameKey = (g) => g.core + "/" + g.name;
+
+// ---- wordmark: written letter by letter like a pen, then wiped and written again ----
+
+(async function wordmark() {
+  const w = $("wordmark");
+  const NS = "http://www.w3.org/2000/svg";
+  try { await document.fonts.load('40px "Monoton"'); } catch {}
+  const svg = document.createElementNS(NS, "svg");
+  w.append(svg);
+  let x = 2;
+  [..."arcade"].forEach((ch, i) => {
+    const t = document.createElementNS(NS, "text");
+    t.textContent = ch;
+    t.setAttribute("x", x);
+    t.setAttribute("y", 38);
+    t.style.animationDelay = (i * 0.32) + "s";
+    svg.append(t);
+    x += t.getComputedTextLength() + 3;
+  });
+  svg.setAttribute("viewBox", `0 0 ${x + 2} 46`);
+  svg.setAttribute("width", x + 2);
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) w.classList.add("still");
+})();
+
+// ---- card tilt and glare ----
+
+(function tilt() {
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  const list = $("list");
+  let active = null;
+  const reset = (c) => {
+    c.classList.remove("tilting");
+    c.style.removeProperty("--rx"); c.style.removeProperty("--ry"); c.style.setProperty("--glare", 0);
+  };
+  list.addEventListener("pointermove", (e) => {
+    if (e.pointerType !== "mouse") return;
+    const c = e.target.closest(".card");
+    if (active && active !== c) reset(active);
+    active = c;
+    if (!c) return;
+    const r = c.getBoundingClientRect();
+    const x = (e.clientX - r.left) / r.width, y = (e.clientY - r.top) / r.height;
+    c.classList.add("tilting");
+    c.style.setProperty("--ry", ((x - .5) * 14).toFixed(2) + "deg");
+    c.style.setProperty("--rx", ((.5 - y) * 12).toFixed(2) + "deg");
+    c.style.setProperty("--gx", (x * 100).toFixed(1) + "%");
+    c.style.setProperty("--gy", (y * 100).toFixed(1) + "%");
+    c.style.setProperty("--glare", 1);
+  });
+  list.addEventListener("pointerleave", () => { if (active) reset(active); active = null; });
+})();
+
+// ---- details panel ----
+
+let detailsGame = null, detailsFrom = null;
+
+function openDetails(g, fromCard) {
+  detailsGame = g;
+  detailsFrom = fromCard || null;
+  const sys = SYSTEMS[g.core] || { name: g.core, colors: ["#334155", "#0f172a"] };
+  const cover = card(g).querySelector(".cover");
+  $("dCover").replaceChildren(cover, el("div", { className: "glare" }));
+  $("dTitle").textContent = displayName(g.name);
+  $("dSys").textContent = sys.name;
+  const facts = factsFor(g);
+  $("dFact").textContent = facts[0] || "";
+  $("dFact").hidden = !facts.length;
+  drawDetailsFav();
+  $("dRemove").hidden = !(g.custom >= 0);
+  $("details").classList.add("open");
+  $("details").setAttribute("aria-hidden", "false");
+  $("scrim").classList.add("open");
+  $("dPlay").focus({ preventScroll: true });
+}
+
+function drawDetailsFav() {
+  const on = detailsGame && favs.has(gameKey(detailsGame));
+  $("dFav").classList.toggle("on", !!on);
+  $("dFav").textContent = on ? "★ starred" : "☆ favourite";
+}
+
+function closeDetails(refocus = true) {
+  if (!detailsGame) return;
+  $("details").classList.remove("open");
+  $("details").setAttribute("aria-hidden", "true");
+  $("scrim").classList.remove("open");
+  const key = gameKey(detailsGame);
+  detailsGame = null;
+  if (refocus) {
+    const back = [...document.querySelectorAll(".card")].find((c) => c.gameRef && gameKey(c.gameRef) === key);
+    (back || detailsFrom)?.focus({ preventScroll: false });
+  }
+}
+
+$("detailsClose").onclick = () => closeDetails();
+$("scrim").onclick = () => closeDetails();
+$("dPlay").onclick = () => { const g = detailsGame; closeDetails(false); if (g) launch(g); };
+$("dFav").onclick = () => { if (detailsGame) { toggleFav(detailsGame); drawDetailsFav(); } };
+$("dStates").onclick = () => { if (detailsGame) openSaves(detailsGame); };
+$("dRemove").onclick = () => {
+  const g = detailsGame;
+  if (!g || !(g.custom >= 0)) return;
+  closeDetails(false);
+  saved.splice(g.custom, 1);
+  store.set("arcade.games", saved);
+  render();
+  toast("removed " + g.name);
+};
+
+// ---- keyboard and controller browsing ----
+
+const anyDialogOpen = () => !!document.querySelector("dialog[open]") || $("overlay").style.display === "block";
+const typing = () => /^(INPUT|SELECT|TEXTAREA)$/.test(document.activeElement?.tagName || "");
+
+// move to the nearest card in a direction, by on-screen position
+function moveFocus(dir) {
+  const cards = [...document.querySelectorAll("#list .card")];
+  if (!cards.length) return;
+  const cur = document.activeElement?.classList?.contains("card") ? document.activeElement : null;
+  if (!cur) return cards[0].focus();
+  const go = (c) => {
+    c.focus({ preventScroll: true });
+    c.scrollIntoView({ block: "nearest", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  };
+  if (dir === "left" || dir === "right") {
+    const next = cards[cards.indexOf(cur) + (dir === "right" ? 1 : -1)];
+    if (next) go(next);
+    return;
+  }
+  const a = cur.getBoundingClientRect(), ax = a.left + a.width / 2, ay = a.top + a.height / 2;
+  let best = null, bestScore = Infinity;
+  for (const c of cards) {
+    if (c === cur) continue;
+    const b = c.getBoundingClientRect(), bx = b.left + b.width / 2, by = b.top + b.height / 2;
+    const dx = bx - ax, dy = by - ay;
+    const main = dir === "left" ? -dx : dir === "right" ? dx : dir === "up" ? -dy : dy;
+    const side = dir === "left" || dir === "right" ? Math.abs(dy) : Math.abs(dx);
+    if (main <= 4) continue;
+    const score = main + side * 2.5;
+    if (score < bestScore) { bestScore = score; best = c; }
+  }
+  if (best) go(best);
+}
+
+function focusedGame() {
+  const c = document.activeElement;
+  return c && c.classList && c.classList.contains("card") ? c.gameRef : null;
+}
+
+const ARROWS = { ArrowLeft: "left", ArrowRight: "right", ArrowUp: "up", ArrowDown: "down" };
+window.addEventListener("keydown", (e) => {
+  if (anyDialogOpen() || listening) return;
+  if (detailsGame) {
+    if (e.key === "Escape") { e.preventDefault(); closeDetails(); }
+    else if ((e.key === "f" || e.key === "F") && !typing()) { e.preventDefault(); $("dFav").click(); }
+    return;
+  }
+  if (typing()) return;
+  if (ARROWS[e.key]) { e.preventDefault(); moveFocus(ARROWS[e.key]); }
+  else if ((e.key === "f" || e.key === "F") && focusedGame()) { e.preventDefault(); toggleFav(focusedGame()); }
+});
+
+// controllers are only polled while one is plugged in and this tab is showing
+(function gamepads() {
+  let running = false, held = {}, repeatAt = {};
+  const press = (name, now) => {
+    const first = !held[name];
+    held[name] = true;
+    if (first) { repeatAt[name] = now + 380; return true; }
+    if (now >= repeatAt[name]) { repeatAt[name] = now + 110; return true; }
+    return false;
+  };
+  const release = (name) => { held[name] = false; };
+  const loop = (now) => {
+    const pads = [...(navigator.getGamepads ? navigator.getGamepads() : [])].filter(Boolean);
+    if (!pads.length) { running = false; return; }
+    if (!document.hidden && !anyDialogOpen()) {
+      const p = pads[0], b = (i) => p.buttons[i] && p.buttons[i].pressed;
+      const ax = p.axes[0] || 0, ay = p.axes[1] || 0;
+      const dirs = { up: b(12) || ay < -.6, down: b(13) || ay > .6, left: b(14) || ax < -.6, right: b(15) || ax > .6 };
+      for (const [d, on] of Object.entries(dirs)) {
+        if (!on) { release(d); continue; }
+        if (press(d, now) && !detailsGame) moveFocus(d);
+      }
+      const act = { a: b(0), b: b(1), y: b(3) };
+      for (const [k, on] of Object.entries(act)) {
+        if (!on) { release(k); continue; }
+        if (!press(k, now) || repeatAt[k] !== now + 380) continue;
+        if (k === "a") {
+          if (detailsGame) $("dPlay").click();
+          else if (focusedGame()) document.activeElement.click();
+          else moveFocus("down");
+        } else if (k === "b") closeDetails();
+        else if (k === "y") {
+          if (detailsGame) $("dFav").click();
+          else if (focusedGame()) toggleFav(focusedGame());
+        }
+      }
+    }
+    requestAnimationFrame(loop);
+  };
+  const start = () => { if (!running) { running = true; requestAnimationFrame(loop); } };
+  addEventListener("gamepadconnected", start);
+  if (navigator.getGamepads && [...navigator.getGamepads()].some(Boolean)) start();
+})();
 
 // ---- save states ----
 
