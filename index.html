@@ -93,6 +93,8 @@
   .seg { display: inline-flex; background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 3px; }
   .seg button { border: 0; background: none; color: var(--dim); padding: 6px 11px; border-radius: 7px; font-size: 13px; }
   .seg button.on { background: var(--card2); color: var(--text); }
+  .pick { display: inline-flex; align-items: center; gap: 6px; color: var(--dim); font-size: 13px; }
+  .pick select { background: var(--card); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; font-size: 13px; }
   .chips { display: flex; gap: 6px; flex-wrap: wrap; max-width: 1200px; margin: 12px auto 0; }
   .chip {
     border: 1px solid var(--line); background: none; border-radius: 99px;
@@ -112,6 +114,7 @@
   section h2::after { content: ""; flex: 1; height: 1px; background: var(--line); order: 3; }
   section h2 .count { color: var(--faint); font-weight: 400; order: 2; }
   #rail.consoles button { font-size: 10px; width: 44px; letter-spacing: -.02em; }
+  #rail button.pin { font-size: 14px; color: var(--accent2); }
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 14px; }
 
   .card {
@@ -224,6 +227,15 @@
   .state .info { padding: 8px 10px 10px; display: flex; align-items: center; gap: 6px; }
   .state .info span { flex: 1; font: 12px var(--mono); color: var(--dim); }
   .states .none { grid-column: 1 / -1; text-align: center; color: var(--dim); padding: 30px 0; }
+  .card .fav {
+    position: absolute; top: 8px; right: 8px; width: 28px; height: 26px; border-radius: 8px;
+    display: grid; place-items: center; font-size: 15px; line-height: 1;
+    background: rgba(0,0,0,.55); color: rgba(255,255,255,.75); opacity: 0; transition: opacity .15s, color .15s;
+  }
+  .card:hover .fav, .card .fav.on { opacity: 1; }
+  .card .fav.on { color: #facc15; }
+  .card .fav:hover { color: #facc15; }
+  .card .del { right: 42px !important; }
   .card .saves {
     position: absolute; top: 8px; left: 8px; height: 26px; padding: 0 9px; border-radius: 8px;
     background: rgba(0,0,0,.55); color: #fff; opacity: 0; transition: opacity .15s;
@@ -264,6 +276,9 @@
       <button data-g="console">console</button><button data-g="letter">a-z</button>
     </div>
     <label class="toggle" title="open games in an about:blank tab"><input type="checkbox" id="blank" checked><i></i>about:blank</label>
+    <label class="pick" title="crt filter, applies on the next launch">crt
+      <select id="crt"><option value="off">off</option><option value="crt-easymode.glslp">easymode</option><option value="crt-hyllian-fast.glslp">hyllian fast</option></select>
+    </label>
     <button class="btn" id="openControls">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M6 10h.01M10 10h.01M14 10h.01M18 10h.01M7 14h10"/></svg>
       controls
@@ -408,6 +423,14 @@ const EJS_CORES = [
 ];
 
 // EmulatorJS looks files up by name in EJS_paths before using its data folder
+// shaders EmulatorJS doesn't ship; crt-hyllian-fast from libretro/glsl-shaders (MIT)
+const EXTRA_SHADERS = {
+  "crt-hyllian-fast.glslp": {
+    shader: { type: "text", value: "shaders = 1\n\nshader0 = crt-hyllian-fast.glsl\nfilter_linear0 = false\n" },
+    resources: [{ name: "crt-hyllian-fast.glsl", type: "base64", value: "LyoNCiAgIEh5bGxpYW4ncyBDUlQgU2hhZGVyDQogICB3aXRoIGNnd2cncyBtYWdlbnRhL2dyZWVuIGRvdG1hc2sNCiAgIHBvcnRlZCB0byBHTFNMIGJ5IG1ldGFsbGljNzcNCiAgDQogICBDb3B5cmlnaHQgKEMpIDIwMTEtMjAxNSBIeWxsaWFuIC0gc2VyZ2lvZ2RiQGdtYWlsLmNvbQ0KDQogICBQZXJtaXNzaW9uIGlzIGhlcmVieSBncmFudGVkLCBmcmVlIG9mIGNoYXJnZSwgdG8gYW55IHBlcnNvbiBvYnRhaW5pbmcgYSBjb3B5DQogICBvZiB0aGlzIHNvZnR3YXJlIGFuZCBhc3NvY2lhdGVkIGRvY3VtZW50YXRpb24gZmlsZXMgKHRoZSAiU29mdHdhcmUiKSwgdG8gZGVhbA0KICAgaW4gdGhlIFNvZnR3YXJlIHdpdGhvdXQgcmVzdHJpY3Rpb24sIGluY2x1ZGluZyB3aXRob3V0IGxpbWl0YXRpb24gdGhlIHJpZ2h0cw0KICAgdG8gdXNlLCBjb3B5LCBtb2RpZnksIG1lcmdlLCBwdWJsaXNoLCBkaXN0cmlidXRlLCBzdWJsaWNlbnNlLCBhbmQvb3Igc2VsbA0KICAgY29waWVzIG9mIHRoZSBTb2Z0d2FyZSwgYW5kIHRvIHBlcm1pdCBwZXJzb25zIHRvIHdob20gdGhlIFNvZnR3YXJlIGlzDQogICBmdXJuaXNoZWQgdG8gZG8gc28sIHN1YmplY3QgdG8gdGhlIGZvbGxvd2luZyBjb25kaXRpb25zOg0KDQogICBUaGUgYWJvdmUgY29weXJpZ2h0IG5vdGljZSBhbmQgdGhpcyBwZXJtaXNzaW9uIG5vdGljZSBzaGFsbCBiZSBpbmNsdWRlZCBpbg0KICAgYWxsIGNvcGllcyBvciBzdWJzdGFudGlhbCBwb3J0aW9ucyBvZiB0aGUgU29mdHdhcmUuDQoNCiAgIFRIRSBTT0ZUV0FSRSBJUyBQUk9WSURFRCAiQVMgSVMiLCBXSVRIT1VUIFdBUlJBTlRZIE9GIEFOWSBLSU5ELCBFWFBSRVNTIE9SDQogICBJTVBMSUVELCBJTkNMVURJTkcgQlVUIE5PVCBMSU1JVEVEIFRPIFRIRSBXQVJSQU5USUVTIE9GIE1FUkNIQU5UQUJJTElUWSwNCiAgIEZJVE5FU1MgRk9SIEEgUEFSVElDVUxBUiBQVVJQT1NFIEFORCBOT05JTkZSSU5HRU1FTlQuIElOIE5PIEVWRU5UIFNIQUxMIFRIRQ0KICAgQVVUSE9SUyBPUiBDT1BZUklHSFQgSE9MREVSUyBCRSBMSUFCTEUgRk9SIEFOWSBDTEFJTSwgREFNQUdFUyBPUiBPVEhFUg0KICAgTElBQklMSVRZLCBXSEVUSEVSIElOIEFOIEFDVElPTiBPRiBDT05UUkFDVCwgVE9SVCBPUiBPVEhFUldJU0UsIEFSSVNJTkcgRlJPTSwNCiAgIE9VVCBPRiBPUiBJTiBDT05ORUNUSU9OIFdJVEggVEhFIFNPRlRXQVJFIE9SIFRIRSBVU0UgT1IgT1RIRVIgREVBTElOR1MgSU4NCiAgIFRIRSBTT0ZUV0FSRS4NCiovDQoNCiNwcmFnbWEgcGFyYW1ldGVyIFNIQVJQTkVTUyAiU0hBUlBORVNTIiAxLjAgMS4wIDIuMCAxLjANCiNwcmFnbWEgcGFyYW1ldGVyIE1BU0tfSU5URU5TSVRZICJNQVNLIElOVEVOU0lUWSIgMC41IDAuMCAxLjAgMC4xDQojcHJhZ21hIHBhcmFtZXRlciBJbnB1dEdhbW1hICJJTlBVVCBHQU1NQSIgMi40IDAuMCA1LjAgMC4xDQojcHJhZ21hIHBhcmFtZXRlciBPdXRwdXRHYW1tYSAiT1VUUFVUIEdBTU1BIiAyLjIgMC4wIDUuMCAwLjENCiNwcmFnbWEgcGFyYW1ldGVyIEJSSUdIVEJPT1NUICJCUklHSFQgQk9PU1QiIDEuNSAxLjAgMi4wIDAuMQ0KI3ByYWdtYSBwYXJhbWV0ZXIgU0NBTkxJTkVTICJTQ0FOTElORVMgU1RSRU5HVEgiIDAuNzIgMC4wIDEuMCAwLjAyDQoNCi8vIG11Y2ggZmFzdGVyIEdhbW1hLCBnYWluIGEgdG9uIG9mIGZwcw0KI2RlZmluZSBGQUtFX0dBTU1BIDEuMA0KDQojZGVmaW5lIEdBTU1BX0lOKGNvbG9yKSAgIChGQUtFX0dBTU1BID09IDEuMCk/IGNvbG9yKmNvbG9yIDogcG93KGNvbG9yLCB2ZWMzKElucHV0R2FtbWEpKQ0KI2RlZmluZSBHQU1NQV9PVVQoY29sb3IpICAoRkFLRV9HQU1NQSA9PSAxLjApPyBzcXJ0KGNvbG9yKSA6IHBvdyhjb2xvciwgdmVjMygxLjAvT3V0cHV0R2FtbWEpKQ0KDQoNCiNpZiBkZWZpbmVkKFZFUlRFWCkNCg0KI2lmIF9fVkVSU0lPTl9fID49IDEzMA0KI2RlZmluZSBDT01QQVRfVkFSWUlORyBvdXQNCiNkZWZpbmUgQ09NUEFUX0FUVFJJQlVURSBpbg0KI2RlZmluZSBDT01QQVRfVEVYVFVSRSB0ZXh0dXJlDQojZWxzZQ0KI2RlZmluZSBDT01QQVRfVkFSWUlORyB2YXJ5aW5nIA0KI2RlZmluZSBDT01QQVRfQVRUUklCVVRFIGF0dHJpYnV0ZSANCiNkZWZpbmUgQ09NUEFUX1RFWFRVUkUgdGV4dHVyZTJEDQojZW5kaWYNCg0KI2lmZGVmIEdMX0VTDQojZGVmaW5lIENPTVBBVF9QUkVDSVNJT04gbWVkaXVtcA0KI2Vsc2UNCiNkZWZpbmUgQ09NUEFUX1BSRUNJU0lPTg0KI2VuZGlmDQoNCkNPTVBBVF9BVFRSSUJVVEUgdmVjNCBWZXJ0ZXhDb29yZDsNCkNPTVBBVF9BVFRSSUJVVEUgdmVjNCBUZXhDb29yZDsNCkNPTVBBVF9WQVJZSU5HIHZlYzQgVEVYMDsNCkNPTVBBVF9WQVJZSU5HIHZlYzIgcHM7DQpDT01QQVRfVkFSWUlORyBmbG9hdCBtb2RfZmFjdG9yOw0KQ09NUEFUX1ZBUllJTkcgZmxvYXQgTUFTSzsNCg0KdW5pZm9ybSBtYXQ0IE1WUE1hdHJpeDsNCnVuaWZvcm0gQ09NUEFUX1BSRUNJU0lPTiBpbnQgRnJhbWVEaXJlY3Rpb247DQp1bmlmb3JtIENPTVBBVF9QUkVDSVNJT04gaW50IEZyYW1lQ291bnQ7DQp1bmlmb3JtIENPTVBBVF9QUkVDSVNJT04gdmVjMiBPdXRwdXRTaXplOw0KdW5pZm9ybSBDT01QQVRfUFJFQ0lTSU9OIHZlYzIgVGV4dHVyZVNpemU7DQp1bmlmb3JtIENPTVBBVF9QUkVDSVNJT04gdmVjMiBJbnB1dFNpemU7DQoNCi8vIGNvbXBhdGliaWxpdHkgI2RlZmluZXMNCiNkZWZpbmUgdlRleENvb3JkIFRFWDAueHkNCiNkZWZpbmUgU291cmNlU2l6ZSB2ZWM0KFRleHR1cmVTaXplLCAxLjAgLyBUZXh0dXJlU2l6ZSkgLy9laXRoZXIgVGV4dHVyZVNpemUgb3IgSW5wdXRTaXplDQojZGVmaW5lIE91dFNpemUgdmVjNChPdXRwdXRTaXplLCAxLjAgLyBPdXRwdXRTaXplKQ0KDQojaWZkZWYgUEFSQU1FVEVSX1VOSUZPUk0NCnVuaWZvcm0gQ09NUEFUX1BSRUNJU0lPTiBmbG9hdCBTSEFSUE5FU1M7DQp1bmlmb3JtIENPTVBBVF9QUkVDSVNJT04gZmxvYXQgTUFTS19JTlRFTlNJVFk7DQojZWxzZQ0KI2RlZmluZSBTSEFSUE5FU1MgMS4wDQojZGVmaW5lIE1BU0tfSU5URU5TSVRZIDAuNQ0KI2VuZGlmDQoNCnZvaWQgbWFpbigpDQp7DQogICBnbF9Qb3NpdGlvbiA9IE1WUE1hdHJpeCAqIFZlcnRleENvb3JkOw0KICAgdmVjMiB0ZXhfc2l6ZSA9IHZlYzIoVGV4dHVyZVNpemUueCAqIFNIQVJQTkVTUywgVGV4dHVyZVNpemUueSk7DQogICBwcyA9IDEuMC90ZXhfc2l6ZTsNCiAgIFRFWDAueHkgPSBUZXhDb29yZC54eSArIHBzICogdmVjMigtMC40OTk5OSwgMC4wKTsNCiAgIG1vZF9mYWN0b3IgPSBURVgwLnggKiBPdXRwdXRTaXplLnggKiBUZXh0dXJlU2l6ZS54IC8gSW5wdXRTaXplLng7DQogICBNQVNLID0gMS4wLU1BU0tfSU5URU5TSVRZOw0KfQ0KDQojZWxpZiBkZWZpbmVkKEZSQUdNRU5UKQ0KDQojaWZkZWYgR0xfRVMNCiNpZmRlZiBHTF9GUkFHTUVOVF9QUkVDSVNJT05fSElHSA0KcHJlY2lzaW9uIGhpZ2hwIGZsb2F0Ow0KI2Vsc2UNCnByZWNpc2lvbiBtZWRpdW1wIGZsb2F0Ow0KI2VuZGlmDQojZGVmaW5lIENPTVBBVF9QUkVDSVNJT04gbWVkaXVtcA0KI2Vsc2UNCiNkZWZpbmUgQ09NUEFUX1BSRUNJU0lPTg0KI2VuZGlmDQoNCiNpZiBfX1ZFUlNJT05fXyA+PSAxMzANCiNkZWZpbmUgQ09NUEFUX1ZBUllJTkcgaW4NCiNkZWZpbmUgQ09NUEFUX1RFWFRVUkUgdGV4dHVyZQ0Kb3V0IENPTVBBVF9QUkVDSVNJT04gdmVjNCBGcmFnQ29sb3I7DQojZWxzZQ0KI2RlZmluZSBDT01QQVRfVkFSWUlORyB2YXJ5aW5nDQojZGVmaW5lIEZyYWdDb2xvciBnbF9GcmFnQ29sb3INCiNkZWZpbmUgQ09NUEFUX1RFWFRVUkUgdGV4dHVyZTJEDQojZW5kaWYNCg0KdW5pZm9ybSBDT01QQVRfUFJFQ0lTSU9OIGludCBGcmFtZURpcmVjdGlvbjsNCnVuaWZvcm0gQ09NUEFUX1BSRUNJU0lPTiBpbnQgRnJhbWVDb3VudDsNCnVuaWZvcm0gQ09NUEFUX1BSRUNJU0lPTiB2ZWMyIE91dHB1dFNpemU7DQp1bmlmb3JtIENPTVBBVF9QUkVDSVNJT04gdmVjMiBUZXh0dXJlU2l6ZTsNCnVuaWZvcm0gQ09NUEFUX1BSRUNJU0lPTiB2ZWMyIElucHV0U2l6ZTsNCnVuaWZvcm0gc2FtcGxlcjJEIFRleHR1cmU7DQpDT01QQVRfVkFSWUlORyB2ZWM0IFRFWDA7DQpDT01QQVRfVkFSWUlORyB2ZWMyIHBzOw0KQ09NUEFUX1ZBUllJTkcgZmxvYXQgbW9kX2ZhY3RvcjsNCkNPTVBBVF9WQVJZSU5HIGZsb2F0IE1BU0s7DQoNCi8vIGNvbXBhdGliaWxpdHkgI2RlZmluZXMNCiNkZWZpbmUgU291cmNlIFRleHR1cmUNCiNkZWZpbmUgdlRleENvb3JkIFRFWDAueHkNCg0KI2RlZmluZSBTb3VyY2VTaXplIHZlYzQoVGV4dHVyZVNpemUsIDEuMCAvIFRleHR1cmVTaXplKSAvL2VpdGhlciBUZXh0dXJlU2l6ZSBvciBJbnB1dFNpemUNCiNkZWZpbmUgT3V0U2l6ZSB2ZWM0KE91dHB1dFNpemUsIDEuMCAvIE91dHB1dFNpemUpDQoNCiNpZmRlZiBQQVJBTUVURVJfVU5JRk9STQ0KdW5pZm9ybSBDT01QQVRfUFJFQ0lTSU9OIGZsb2F0IE1BU0tfSU5URU5TSVRZOw0KdW5pZm9ybSBDT01QQVRfUFJFQ0lTSU9OIGZsb2F0IElucHV0R2FtbWE7DQp1bmlmb3JtIENPTVBBVF9QUkVDSVNJT04gZmxvYXQgT3V0cHV0R2FtbWE7DQp1bmlmb3JtIENPTVBBVF9QUkVDSVNJT04gZmxvYXQgQlJJR0hUQk9PU1Q7DQp1bmlmb3JtIENPTVBBVF9QUkVDSVNJT04gZmxvYXQgU0NBTkxJTkVTOw0KI2Vsc2UNCiNkZWZpbmUgTUFTS19JTlRFTlNJVFkgMC41DQojZGVmaW5lIElucHV0R2FtbWEgMi40DQojZGVmaW5lIE91dHB1dEdhbW1hIDIuMg0KI2RlZmluZSBCUklHSFRCT09TVCAwLjANCiNkZWZpbmUgU0NBTkxJTkVTIDAuNQ0KI2VuZGlmDQoNCg0Kdm9pZCBtYWluKCkNCnsNCiAgIHZlYzIgZHggPSB2ZWMyKHBzLngsIDAuMCk7DQogICB2ZWMyIGR5ID0gdmVjMigwLjAsIHBzLnkpOw0KICAgDQogICB2ZWMyIHRjID0gKGZsb29yKHZUZXhDb29yZC54eSAqIFNvdXJjZVNpemUueHkpICsgdmVjMigwLjQ5OTk5LCAwLikpIC8gU291cmNlU2l6ZS54eTsNCiAgIA0KICAgdmVjMiBmcCA9IGZyYWN0KHZUZXhDb29yZC54eSAqIFNvdXJjZVNpemUueHkpOw0KICAgDQogICB2ZWMzIGMxMCA9IENPTVBBVF9URVhUVVJFKFNvdXJjZSwgdGMgLSAgICAgICBkeCkueHl6Ow0KICAgYzEwID0gR0FNTUFfSU4oYzEwKTsNCiAgIHZlYzMgYzExID0gQ09NUEFUX1RFWFRVUkUoU291cmNlLCB0YyAgICAgICAgICAgKS54eXo7DQogICBjMTEgPSBHQU1NQV9JTihjMTEpOw0KICAgdmVjMyBjMTIgPSBDT01QQVRfVEVYVFVSRShTb3VyY2UsIHRjICsgICAgICAgZHgpLnh5ejsNCiAgIGMxMiA9IEdBTU1BX0lOKGMxMik7DQogICB2ZWMzIGMxMyA9IENPTVBBVF9URVhUVVJFKFNvdXJjZSwgdGMgKyAyLjAgKiBkeCkueHl6Ow0KCWMxMyA9IEdBTU1BX0lOKGMxMyk7DQogICBmbG9hdCBGRiA9IGZwLngqZnAueDsNCiAgIHZlYzQgbG9iZXMgPSB2ZWM0KEZGKmZwLngsIEZGLCBmcC54LCAxLjApOw0KDQogICB2ZWM0IEludlggPSB2ZWM0KDAuMCk7DQovLyBIb3Jpem9udGFsIGN1YmljIGZpbHRlcg0KICAgIEludlgueCA9IGRvdCh2ZWM0KCAtMC41LCAxLjAsIC0wLjUsIDAuMCksIGxvYmVzKTsNCiAgICBJbnZYLnkgPSBkb3QodmVjNCggIDEuNSwtMi41LCAgMC4wLCAxLjApLCBsb2Jlcyk7DQogICAgSW52WC56ID0gZG90KHZlYzQoIC0xLjUsIDIuMCwgIDAuNSwgMC4wKSwgbG9iZXMpOw0KICAgIEludlgudyA9IGRvdCh2ZWM0KCAgMC41LC0wLjUsICAwLjAsIDAuMCksIGxvYmVzKTsNCgkNCiAgICB2ZWMzIGNvbG9yID0gSW52WC54KmMxMC54eXo7DQoJCSBjb2xvcis9IEludlgueSpjMTEueHl6Ow0KCQkgY29sb3IrPSBJbnZYLnoqYzEyLnh5ejsNCgkJIGNvbG9yKz0gSW52WC53KmMxMy54eXo7DQoNCgkgY29sb3IgPSBjbGFtcChjb2xvcix2ZWMzKDAuMCksdmVjMygxLjApKTsJDQogICAgDQovLyBmb3Igc21vb3Roc3RlcCAoaW5pdGlhbGx5KSB0byB3b3JrIHdlIG5lZWQgYSAwIHRvIDEgcmFuZ2UsDQovLyBhbmQgMCBiZWluZyB0aGUgY2VudGVyIG9mIHRoZSAiYmVhbSIgICAgDQogICAgZmxvYXQgcG9zMSA9IDEuMCAtIGFicyhmcC55KjIuMC0xLjApOyAvLyBub3cgMCBpcyBvdXIgY2VudGVyDQogICAgZmxvYXQgZDEgPSBwb3MxOw0KICAgIGZsb2F0IGQgID0gZDEqZDEqKDMuMC0oMi4wKmQxKSk7IC8vIHNtb290aHN0ZXANCiAgICBjb2xvciAqPSBTQ0FOTElORVMqZCpCUklHSFRCT09TVCArIDEuMC1TQ0FOTElORVM7DQovLyBkb3RtYXNrDQogICAgdmVjMyBkb3RNYXNrV2VpZ2h0cyA9IG1peCgNCiAgICAgICAgICAgICAgICAgICAgICAgICAgIHZlYzMoMS4wLCBNQVNLLCAxLjApLA0KICAgICAgICAgICAgICAgICAgICAgICAgICAgdmVjMyhNQVNLLCAxLjAsIE1BU0spLA0KICAgICAgICAgICAgICAgICAgICAgICAgICAgbW9kKGZsb29yKG1vZF9mYWN0b3IpLCAyLjApDQogICAgICAgICAgICAgICAgICAgICAgICAgICApOw0KICAgIGNvbG9yICo9IGRvdE1hc2tXZWlnaHRzOw0KDQogICAgY29sb3IgID0gR0FNTUFfT1VUKGNvbG9yKTsgICAgDQoNCiAgICBGcmFnQ29sb3IgPSB2ZWM0KGNvbG9yLnIsIGNvbG9yLmcsIGNvbG9yLmIsIDEuMCk7DQp9IA0KI2VuZGlmDQo=" }],
+  },
+};
+
 function corePaths() {
   const p = {};
   for (const c of EJS_CORES) {
@@ -587,6 +610,21 @@ const SHORT = {
 };
 
 let groupBy = store.get("arcade.groupBy", "console");
+let favs = new Set(store.get("arcade.favs", []));
+let recent = store.get("arcade.recent", []);
+
+function toggleFav(g) {
+  const k = gameKey(g);
+  favs.has(k) ? favs.delete(k) : favs.add(k);
+  store.set("arcade.favs", [...favs]);
+  render();
+}
+
+function markPlayed(g) {
+  const k = gameKey(g);
+  recent = [k, ...recent.filter((x) => x !== k)].slice(0, 8);
+  store.set("arcade.recent", recent);
+}
 
 // "Legend of Zelda, The (USA) (Rev 1)" -> "The Legend of Zelda"
 function displayName(name) {
@@ -634,6 +672,10 @@ function card(g) {
       el("div", { className: "name", textContent: displayName(g.name) }),
       el("div", { className: "sys", textContent: sys.name })));
   c.onclick = () => launch(g);
+
+  const fav = el("span", { className: "fav" + (favs.has(gameKey(g)) ? " on" : ""), title: "favourite", textContent: "★" });
+  fav.onclick = (e) => { e.stopPropagation(); toggleFav(g); };
+  c.append(fav);
 
   const saves = el("span", { className: "saves", title: "save states",
     innerHTML: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 3h11l3 3v15H5z"/><path d="M8 3v5h7V3M8 21v-7h8v7"/></svg>states' });
@@ -711,6 +753,20 @@ function render() {
   } else if (!games.length) {
     list.append(el("div", { className: "empty" }, el("h3", { textContent: "nothing matches" })));
   }
+  // favourites and recent sit on top, but only when not searching or filtering
+  const pinned = [];
+  if (!q && filter === "all") {
+    const byKey = new Map(everything.map((g) => [gameKey(g), g]));
+    const favGames = everything.filter((g) => favs.has(gameKey(g)));
+    const recentGames = recent.map((k) => byKey.get(k)).filter(Boolean);
+    if (favGames.length) pinned.push(["favs", "favourites", "★", favGames]);
+    if (recentGames.length) pinned.push(["recent", "recently played", "⟲", recentGames]);
+  }
+  for (const [id, label, , list_] of pinned) {
+    list.append(el("section", { id: "sec-" + id, className: "pinned" },
+      el("h2", { textContent: label }), el("div", { className: "grid" }, ...list_.map(card))));
+  }
+
   for (const k of order) {
     if (!groups[k]) continue;
     const h = el("h2", { textContent: heading(k) });
@@ -722,6 +778,11 @@ function render() {
   const rail = $("rail");
   rail.textContent = "";
   rail.classList.toggle("consoles", byConsole);
+  for (const [id, label, icon] of pinned) {
+    const b = el("button", { textContent: icon, title: label, className: "pin" });
+    b.onclick = () => $("sec-" + id).scrollIntoView();
+    rail.append(b);
+  }
   for (const k of order) {
     if (byConsole && !groups[k]) continue;
     const b = el("button", { textContent: byConsole ? (SHORT[k] || k) : k, disabled: !groups[k], title: heading(k) });
@@ -1314,6 +1375,19 @@ const GAME_FACTS = [
     "In Sonic Labyrinth Eggman swaps Sonic's speed shoes for slow-down boots, so he can't jump and has to spin-dash instead.",
     "It came out on the Game Gear in 1995, with an isometric view unlike any other Sonic game of the time.",
   ]],
+  ["arcade", /galaga/i, [
+    "Galaga is Namco's 1981 sequel to Galaxian; Midway distributed it in North American arcades.",
+    "Let a Boss Galaga capture your ship with its tractor beam, then shoot it to rescue the ship and fly two fighters at once.",
+  ]],
+  ["nes", /^tetris/i, [
+    "Alexey Pajitnov created Tetris in 1984 at the Soviet Academy of Sciences in Moscow.",
+    "This 1989 NES version is the one played at the Classic Tetris World Championship.",
+    "Past level 29 the pieces fall so fast that top players had to invent new ways of pressing buttons to keep going.",
+  ]],
+  ["gba", /warioware/i, [
+    "WarioWare, Inc.: Mega Microgame$! has over 200 microgames, most of them over in about five seconds.",
+    "It began as a collection of minigames from Mario Artist: Polygon Studio on the Nintendo 64DD.",
+  ]],
 ];
 
 const SYSTEM_FACTS = {
@@ -1359,11 +1433,13 @@ function playerPage(game) {
     scheme,
     // fbneo wants neogeo.zip next to the game as a zip, not unpacked like a normal bios
     biosAsFile: game.core === "neogeo",
-    options: game.core === "neogeo" ? { "fbneo-neogeo-mode": neogeoMode } : null,
+    options: Object.assign({ shader: $("crt").value === "off" ? "disabled" : $("crt").value },
+      game.core === "neogeo" ? { "fbneo-neogeo-mode": neogeoMode } : {}),
     game: gameSource(game),
     bios: biosSource(game),
     data: EJS_DATA,
     paths: corePaths(),
+    shaders: $("crt").value in EXTRA_SHADERS ? { [$("crt").value]: EXTRA_SHADERS[$("crt").value] } : null,
     controls: ejsControls(scheme),
     mouse: mouseBinds(scheme),
     updated: controls.updated,
@@ -1603,6 +1679,7 @@ ${STATES_SRC}
   window.EJS_gameUrl = game;
   window.EJS_pathtodata = cfg.data;
   window.EJS_paths = cfg.paths;
+  if (cfg.shaders) window.EJS_shaders = cfg.shaders;
   window.EJS_color = "#7c5cff";
   window.EJS_startOnLoaded = true;
   window.EJS_defaultControls = cfg.controls;
@@ -1855,6 +1932,8 @@ function confirmLeave(e) {
 window.addEventListener("beforeunload", confirmLeave);
 
 function launch(game) {
+  markPlayed(game);
+  setTimeout(render, 400);
   const html = playerPage(game);
   if ($("blank").checked) {
     const w = window.open("about:blank", "_blank");
@@ -1888,6 +1967,11 @@ $("closeOverlay").onclick = () => {
 
 $("blank").checked = store.get("arcade.blank", true);
 $("blank").onchange = () => store.set("arcade.blank", $("blank").checked);
+// older builds stored a plain on/off
+const crtSaved = store.get("arcade.crt", "off");
+$("crt").value = crtSaved === true ? "crt-easymode.glslp" : crtSaved === false ? "off" : crtSaved;
+if (!$("crt").value) $("crt").value = "off";
+$("crt").onchange = () => store.set("arcade.crt", $("crt").value);
 
 // ---- dialogs ----
 
