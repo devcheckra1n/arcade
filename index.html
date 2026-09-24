@@ -1810,7 +1810,7 @@ function launch(game) {
       // document.write would stamp this page's url onto the tab, so build it
       // with dom calls and keep the player in a srcdoc frame instead
       const d = w.document;
-      d.title = displayName(game.name);
+      // no title or icon, so the tab just reads about:blank
       w.addEventListener("beforeunload", confirmLeave);
       d.documentElement.style.cssText = "height:100%;background:#000";
       d.body.style.cssText = "margin:0;height:100%;overflow:hidden";
