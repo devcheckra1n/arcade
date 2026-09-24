@@ -1298,6 +1298,22 @@ const GAME_FACTS = [
     "It was published by Playmore, which took over SNK's games after the original company went bankrupt in 2001.",
     "Its graphics roms are encrypted on the cartridge, so the emulator decrypts them at boot. That's the pause before it starts.",
   ]],
+  ["snes", /super punch-out/i, [
+    "Super Punch-Out!! came out in 1994 and was made by the same Nintendo team behind the arcade Punch-Out!! games.",
+    "Every opponent has a tell before their big punch, so reading them matters more than reflexes.",
+  ]],
+  ["gba", /mario kart.*super circuit/i, [
+    "Mario Kart: Super Circuit came out in 2001 and also includes all 20 tracks from Super Mario Kart as unlockables.",
+    "It was developed by Intelligent Systems, better known for Fire Emblem.",
+  ]],
+  ["segaMD", /sonic.*knuckles|sonic.*hedgehog 3/i, [
+    "Sonic 3 and Sonic & Knuckles were planned as one game and split in two; the lock-on cartridge joins them back together.",
+    "Locked on, Knuckles can play through the Sonic 3 zones, which he can't in either game alone.",
+  ]],
+  ["segaGG", /sonic labyrinth/i, [
+    "In Sonic Labyrinth Eggman swaps Sonic's speed shoes for slow-down boots, so he can't jump and has to spin-dash instead.",
+    "It came out on the Game Gear in 1995, with an isometric view unlike any other Sonic game of the time.",
+  ]],
 ];
 
 const SYSTEM_FACTS = {
@@ -1314,6 +1330,8 @@ const SYSTEM_FACTS = {
     "The N64 controller was Nintendo's first with an analog stick.",
   ],
   gba: ["The original GBA screen has no light at all; the SP added a front light in 2003."],
+  segaMD: ["The Mega Drive was sold as the Genesis in North America because Sega couldn't secure the Mega Drive name there."],
+  segaGG: ["The Game Gear ate six AA batteries in roughly three to five hours."],
   snes: ["Mode 7 let the SNES rotate and scale a background layer, which is how F-Zero and Super Mario Kart draw their tracks."],
   nes: [
     "The NES is the Famicom redesigned for the US after the 1983 video game crash.",
